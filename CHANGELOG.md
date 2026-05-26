@@ -1,8 +1,23 @@
 # Changelog
 
-## Unreleased
+## v2.0.0 — Placeholder syntax change + queue primitive
 
-- Added `{{@md:...}}` placeholder type alongside `{{@txt:...}}`. Same raw-text semantics, but signals markdown-formatted content to reviewers. Prompt convention is now `<name>_prompt.md` (preferred); `<name>_prompt.txt` still resolves for legacy workspaces. `iterate-prompt --export` mirrors the source extension when writing the optimized variant.
+### Breaking
+
+- **Placeholder syntax dropped the colon after the prefix.** Templates must migrate:
+  - `{{@:type:path}}` → `{{@type:path}}` (e.g. `{{@:env:displayName}}` → `{{@env:displayName}}`)
+  - `{{INTERPOLATE:type:path}}` → `{{INTERPOLATE_type:path}}`
+
+  The colon between type and path (e.g. `env:displayName`) is unchanged. The legacy `{{HYDRATE:type:path}}` form is removed entirely. The validator's residual-detection regex still recognizes all stale forms (`{{HYDRATE:`, `{{INTERPOLATE:`, `{{@:`) so an unmigrated template surfaces as an error rather than passing through silently.
+
+### Added
+
+- **Producer–consumer queue primitive** — Redis Streams backend with semaphore-based concurrency control and a dead-letter queue. New helpers (`create_queue`, `add_queue_publish_to_workflow`, `add_queue_consumer_to_workflow`, `cleanup_queue_state`), workflow templates, and the `create-queue` / `add-queue-*` skills.
+- **`{{@md:...}}` placeholder type** alongside `{{@txt:...}}`. Same raw-text semantics, but signals markdown-formatted content to reviewers. Prompt convention is now `<name>_prompt.md` (preferred); `<name>_prompt.txt` still resolves for legacy workspaces. `iterate-prompt --export` mirrors the source extension when writing the optimized variant.
+
+### Build
+
+- `build-skill-dist.sh` now excludes `.pytest_cache/` and `*.pdf` from the distribution.
 
 ## v1.0.0 — Read-only skill package + external workspace
 
