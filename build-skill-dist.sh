@@ -26,9 +26,11 @@ rsync -a \
   --exclude='.DS_Store' \
   --exclude='.env*' \
   --exclude='__pycache__/' \
+  --exclude='.pytest_cache/' \
   --exclude='*.pyc' \
   --exclude='*.pyo' \
   --exclude='*.egg-info/' \
+  --exclude='*.pdf' \
   --exclude='build-skill-dist.sh' \
   --exclude='/CHANGELOG.md' \
   --exclude='/LICENSE' \
