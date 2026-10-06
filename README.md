@@ -2,7 +2,7 @@
 
 Make n8n workflows easier for coding agents to read and edit. Templates replace bulky embedded code, prompts, and schemas with file references, helping agents work within their context windows.
 
-![Agents edit shared project files. Dev and production each have a separate local workspace and n8n deployment. Deploy sends changes to n8n; review and resync bring changes back.](docs/assets/project-flow.svg)
+![A coding agent follows shipped skills to edit compact templates, code, prompts, and schemas, and to reuse primitives. YAML configuration feeds build-time interpolation. An illustrative graph shows a main workflow calling sub-workflows that share a primitive; deployment is dependency-first, and activation follows selection or recorded policy. The result goes to local n8n or n8n Cloud. Review and resync bring edits back.](docs/assets/project-flow.svg)
 
 - **Review focused changes.** Edit reusable code, prompts, schemas, and assets in their own files. Agents can load just what a task needs.
 - **Keep environments separate.** Each environment has one workspace and its own n8n deployment, credentials, workflow IDs, builds, and sync history.
@@ -40,6 +40,46 @@ Run in your terminal:
 
 ```bash
 hermes plugins install mwamedacen/n8n-evol-I --enable
+```
+
+### Pi
+
+Load the skill from a local checkout. This is not a plugin install.
+
+```bash
+git clone https://github.com/mwamedacen/n8n-evol-I.git ~/.local/share/n8n-evol-I
+cd /path/to/your-project
+pi --skill ~/.local/share/n8n-evol-I/skills/n8n
+```
+
+Then ask: “Use the n8n skill to adopt this project. Preserve its files and instructions.”
+
+### OpenCode
+
+Add this path to an existing `opencode.json`. Do not replace other settings. If `skills.paths` already exists, append the path.
+
+```bash
+git clone https://github.com/mwamedacen/n8n-evol-I.git ~/.local/share/n8n-evol-I
+```
+
+```json
+{
+  "skills": {
+    "paths": ["~/.local/share/n8n-evol-I/skills"]
+  }
+}
+```
+
+Use that home path or an absolute path. A config-relative path is not reliable from a subdirectory. Then run `opencode` in your project and ask: “Use the n8n skill to adopt this project. Preserve its files and instructions.”
+
+Pi and OpenCode load the skill only. They do not gain Claude plugin commands or hooks.
+
+### Muse, GrokBot, and Dots
+
+Paste this prompt:
+
+```text
+Install https://github.com/mwamedacen/n8n-evol-I so you can build, monitor, and debug my n8n workflows efficiently. Follow the repository's installation instructions and use its skills, workflow templates, and reusable primitives.
 ```
 
 Start a new agent session after installation. [Other agents, local checkouts, and optional dependencies](install.md)
