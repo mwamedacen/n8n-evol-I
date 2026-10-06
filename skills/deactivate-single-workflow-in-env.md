@@ -6,6 +6,8 @@ user-invocable: false
 
 # deactivate-single-workflow-in-env
 
+Path examples use bundled defaults. Resolve source and environment locations from [project configuration](../configuration.md); preserve user preferences and existing conventions.
+
 ## When
 
 You want to pause a workflow's triggers without removing the workflow.

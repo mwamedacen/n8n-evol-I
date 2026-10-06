@@ -93,7 +93,7 @@ def test_auto_register_queue_scopes_static(tmp_path):
     (ws / "n8n-config").mkdir(parents=True)
     for env in ("dev", "prod"):
         (ws / "n8n-config" / f"{env}.yml").write_text(yaml.dump({"name": env}))
-    _auto_register_queue_scopes(ws, "={{ 'foo' }}")
+    _auto_register_queue_scopes(ws, "={{ 'foo' }}", ["dev", "prod"])
     for env in ("dev", "prod"):
         data = yaml.safe_load((ws / "n8n-config" / f"{env}.yml").read_text())
         assert data["queueScopes"] == ["foo"]

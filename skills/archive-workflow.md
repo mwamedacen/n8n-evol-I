@@ -6,6 +6,8 @@ user-invocable: false
 
 # archive-workflow
 
+Path examples use bundled defaults. Resolve source and environment locations from [project configuration](../configuration.md); preserve user preferences and existing conventions.
+
 ## When
 
 A deployed workflow should be retired but not deleted — archive it. Archived workflows are hidden from the active list, are deactivated, and reject all updates (`PUT` returns `400 {"message":"Cannot update an archived workflow."}`) until unarchived. Use [`unarchive-workflow.md`](unarchive-workflow.md) to restore.
@@ -20,7 +22,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/helpers/archive.py \
 
 ## Side effects
 
-- Resolves `<wf>` to its workflow id via `<workspace>/n8n-config/<env>.yml.workflows.<wf>.id`.
+- Resolves `<wf>` to its workflow id via the selected environment's `workflows.<wf>.id` binding (private `bindings.json`, or legacy environment YAML).
 - Calls `POST /api/v1/workflows/<id>/archive` against the env's n8n instance.
 - Idempotent: archiving an already-archived workflow returns `200`.
 

@@ -36,7 +36,9 @@ class TestDryRun:
     def test_no_force_prints_candidates_and_does_not_post(self, tmp_path, capsys):
         ws = _make_workspace(tmp_path)
 
-        def get_side_effect(url, headers=None, params=None):
+        def get_side_effect(url, headers=None, params=None, timeout=None, allow_redirects=True):
+            assert timeout == 30
+            assert allow_redirects is False
             r = MagicMock()
             r.raise_for_status.return_value = None
             st = (params or {}).get("status")
@@ -78,7 +80,9 @@ class TestForceMode:
     def test_force_posts_to_stop_endpoint(self, tmp_path, capsys):
         ws = _make_workspace(tmp_path)
 
-        def get_side_effect(url, headers=None, params=None):
+        def get_side_effect(url, headers=None, params=None, timeout=None, allow_redirects=True):
+            assert timeout == 30
+            assert allow_redirects is False
             r = MagicMock()
             r.raise_for_status.return_value = None
             st = (params or {}).get("status")
@@ -149,7 +153,9 @@ class TestStatusListParsing:
         ws = _make_workspace(tmp_path)
         seen_statuses: list[str] = []
 
-        def get_side_effect(url, headers=None, params=None):
+        def get_side_effect(url, headers=None, params=None, timeout=None, allow_redirects=True):
+            assert timeout == 30
+            assert allow_redirects is False
             r = MagicMock()
             r.raise_for_status.return_value = None
             seen_statuses.append((params or {}).get("status"))

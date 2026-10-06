@@ -9,7 +9,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import yaml
 
-from helpers.workspace import workspace_root
+from helpers.workspace import workspace_root, workspace_path, build_path
+from helpers.config import env_config_path, environment_names, load_yaml, load_env
 
 OK, WARN, FAIL = "ok", "warn", "fail"
 _ICONS = {OK: "✓", WARN: "⚠", FAIL: "✗"}
@@ -25,7 +26,7 @@ def _fmt(state: str, label: str, detail: str = "") -> str:
 
 
 def _check_workspace(ws: Path) -> list:
-    required = [ws / "n8n-config", ws / "n8n-workflows-template"]
+    required = [workspace_path(ws, "config"), workspace_path(ws, "templates")]
     missing = [str(d) for d in required if not d.is_dir()]
     if missing:
         return [_row(FAIL, "workspace tree", f"missing: {', '.join(missing)}")]
@@ -34,12 +35,11 @@ def _check_workspace(ws: Path) -> list:
 
 def _check_env_yaml(ws: Path, env: str) -> list:
     rows = []
-    yaml_file = ws / "n8n-config" / f"{env}.yml"
+    yaml_file = env_config_path(ws, env)
     if not yaml_file.exists():
         return [_row(FAIL, f"{env}.yml", "file not found")]
     try:
-        with open(yaml_file) as f:
-            data = yaml.safe_load(f) or {}
+        data = load_yaml(env, ws)
         rows.append(_row(OK, f"{env}.yml", "parses OK"))
     except Exception as e:
         return [_row(FAIL, f"{env}.yml", str(e))]
@@ -67,8 +67,8 @@ def _check_n8n_api(ws: Path, env: str) -> list:
         from helpers.config import load_yaml, load_env
         import os
         data = load_yaml(env, ws)
-        load_env(env, ws)
-        api_key = os.environ.get("N8N_API_KEY", "")
+        secrets = load_env(env, ws)
+        api_key = secrets.get("N8N_API_KEY", "")
         if not api_key:
             return [_row(WARN, f"{env} API key", "N8N_API_KEY not set in .env")]
         from helpers.n8n_client import N8nClient
@@ -90,15 +90,14 @@ def _check_lock_scopes(ws: Path, env: str) -> list:
 
     Returns [] if no locked workflows are found.
     """
-    template_dir = ws / "n8n-workflows-template"
+    template_dir = workspace_path(ws, "templates")
     if not template_dir.is_dir():
         return []
-    yaml_file = ws / "n8n-config" / f"{env}.yml"
+    yaml_file = env_config_path(ws, env)
     if not yaml_file.exists():
         return []
     try:
-        with open(yaml_file) as f:
-            data = yaml.safe_load(f) or {}
+        data = load_yaml(env, ws)
     except Exception:
         return []
     registered = set(data.get("lockScopes") or [])
@@ -150,7 +149,7 @@ def _extract_static_scope_for_doctor(scope_expr: str):
 
 
 def _check_templates(ws: Path) -> list:
-    template_dir = ws / "n8n-workflows-template"
+    template_dir = workspace_path(ws, "templates")
     templates = list(template_dir.glob("*.template.json")) if template_dir.is_dir() else []
     if not templates:
         return [_row(WARN, "workflow templates", "none found")]
@@ -227,8 +226,8 @@ def _check_audit(ws: Path, env: str) -> list:
         from helpers.config import load_yaml, load_env
         import os
         data = load_yaml(env, ws)
-        load_env(env, ws)
-        api_key = os.environ.get("N8N_API_KEY", "")
+        secrets = load_env(env, ws)
+        api_key = secrets.get("N8N_API_KEY", "")
         if not api_key:
             return [_row(WARN, f"{env} audit", "N8N_API_KEY not set in .env")]
         from helpers.n8n_client import N8nClient
@@ -306,15 +305,7 @@ def main() -> None:
     if not args.audit_only:
         rows += _check_workspace(ws)
 
-    config_dir = ws / "n8n-config"
-    envs: list[str] = []
-    if args.env:
-        envs = [args.env]
-    elif config_dir.is_dir():
-        envs = [
-            p.stem for p in sorted(config_dir.glob("*.yml"))
-            if p.stem not in ("common", "deployment_order")
-        ]
+    envs = [args.env] if args.env else environment_names(ws)
 
     if not envs:
         rows.append(_row(WARN, "environments", "no env configured — run bootstrap-env first"))

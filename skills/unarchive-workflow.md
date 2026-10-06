@@ -6,6 +6,8 @@ user-invocable: false
 
 # unarchive-workflow
 
+Path examples use bundled defaults. Resolve source and environment locations from [project configuration](../configuration.md); preserve user preferences and existing conventions.
+
 ## When
 
 A workflow was previously archived via [`archive-workflow.md`](archive-workflow.md) and now needs to be edited or redeployed. Without unarchiving first, every `PUT /workflows/{id}` rejects with `400 {"message":"Cannot update an archived workflow."}` — including the PUT that `deploy.py` issues.
@@ -20,7 +22,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/helpers/unarchive.py \
 
 ## Side effects
 
-- Resolves `<wf>` to its workflow id via `<workspace>/n8n-config/<env>.yml.workflows.<wf>.id`.
+- Resolves `<wf>` to its workflow id via the selected environment's `workflows.<wf>.id` binding (private `bindings.json`, or legacy environment YAML).
 - Calls `POST /api/v1/workflows/<id>/unarchive` against the env's n8n instance.
 - After unarchive, the workflow is in deactivated state — run `activate-single-workflow-in-env.md` (or pass through `deploy.py`) to re-enable triggers.
 
@@ -32,7 +34,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/helpers/unarchive.py --env prod --workflow-key foo
 python3 ${CLAUDE_PLUGIN_ROOT}/helpers/deploy.py --env prod --workflow-key foo
 ```
 
-`deploy.py` re-PUTs the latest hydrated template and (by default) activates — so unarchive + deploy is the round-trip from archived back to live.
+`deploy.py` rebuilds current source and checks the synchronization baseline. In manifest projects, explicitly pass `--activate` when returning the restored workflow to service.
 
 ## See also
 

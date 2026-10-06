@@ -4,6 +4,8 @@ description: Slash-command entry point to tidy a workflow template's node positi
 
 # tidyup
 
+Path examples use bundled defaults. Resolve source and environment locations from [project configuration](../configuration.md); preserve user preferences and existing conventions.
+
 Apply the canvas-layout algorithm to a workflow template. Runs the `@n8n/workflow-sdk` dagre layouter (auto-installed on first use); falls back to pure-Python BFS if Node is unavailable. Sticky notes are never moved.
 
 ## How

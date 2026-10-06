@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/auto_tidy.py",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/scripts/python\" \"${CLAUDE_PLUGIN_ROOT}/hooks/auto_tidy.py\"",
             "timeout": 120,
             "statusMessage": "Tidying workflow positions...",
             "async": true

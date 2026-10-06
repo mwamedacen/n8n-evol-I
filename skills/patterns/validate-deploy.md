@@ -23,7 +23,7 @@ Before declaring a workflow shipped, run this loop. Both forms below produce the
 ## Composite (one-liner)
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/helpers/deploy_run_assert.py --env <env> --workflow-key <key> [--payload <json>] [--timeout 30]
+python3 ${CLAUDE_PLUGIN_ROOT}/helpers/deploy_run_assert.py --env <env> --workflow-key <key> --activate [--payload <json>] [--timeout 30]
 ```
 
 This subprocesses `validate.py → deploy.py → run.py` and exits with the first failing stage's exit code, printing `FAIL: stage=<n> exit=<code>` on stderr.
@@ -33,7 +33,7 @@ This subprocesses `validate.py → deploy.py → run.py` and exits with the firs
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/helpers/hydrate.py --env <env> --workflow-key <key>
 python3 ${CLAUDE_PLUGIN_ROOT}/helpers/validate.py --env <env> --workflow-key <key> --source built
-python3 ${CLAUDE_PLUGIN_ROOT}/helpers/deploy.py --env <env> --workflow-key <key>
+python3 ${CLAUDE_PLUGIN_ROOT}/helpers/deploy.py --env <env> --workflow-key <key> --activate
 python3 ${CLAUDE_PLUGIN_ROOT}/helpers/run.py --env <env> --workflow-key <key> --expect-status success --timeout 30
 ```
 

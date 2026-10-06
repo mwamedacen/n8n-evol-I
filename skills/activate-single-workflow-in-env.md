@@ -6,6 +6,8 @@ user-invocable: false
 
 # activate-single-workflow-in-env
 
+Path examples use bundled defaults. Resolve source and environment locations from [project configuration](../configuration.md); preserve user preferences and existing conventions.
+
 ## When
 
 Activate a workflow that was deployed with `--no-activate`, or re-activate after a deactivate.

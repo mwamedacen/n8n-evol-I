@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from helpers.workspace import workspace_root
+from helpers.workspace import workspace_root, workspace_path, build_path
 
 
 _RATE_LIMIT_NODE_NAME = "Rate Limit"
@@ -251,8 +251,10 @@ def main() -> None:
     args = parser.parse_args()
 
     ws = workspace_root(args.workspace)
+    from helpers.workspace import ensure_workspace
+    ensure_workspace(ws)
 
-    if not (ws / "n8n-workflows-template" / "rate_limit_check.template.json").exists():
+    if not (workspace_path(ws, "templates") / "rate_limit_check.template.json").exists():
         print(
             "ERROR: primitive 'rate_limit_check' not found in workspace. "
             "Run create-lock --include-rate-limit first.",
@@ -260,7 +262,7 @@ def main() -> None:
         )
         sys.exit(1)
 
-    template_path = ws / "n8n-workflows-template" / f"{args.workflow_key}.template.json"
+    template_path = workspace_path(ws, "templates") / f"{args.workflow_key}.template.json"
     if not template_path.exists():
         print(f"ERROR: workflow template not found: {template_path}", file=sys.stderr)
         sys.exit(1)

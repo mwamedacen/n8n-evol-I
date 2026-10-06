@@ -1,33 +1,31 @@
 ---
-description: Run unit tests over JS used in n8n Code nodes and/or Python used in cloud functions.
+description: Run the project's selected tests for workflow code and cloud functions.
 ---
 
 # test
 
-## When
+Path examples use bundled defaults. Resolve source and environment locations from [project configuration](../configuration.md); preserve user preferences and existing conventions.
 
-Before deploys. After edits that touch `n8n-functions/` or `cloud-functions/`.
-
-## How
+Run tests after source changes and before deployment.
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/helpers/test_functions.py --target {n8n|cloud|all} [--filter <name>]
+python3 ${CLAUDE_PLUGIN_ROOT}/helpers/test_functions.py \
+  --workspace <project> --target {n8n|cloud|all} [--filter <name>]
 ```
 
-## Side effects
-
-- Discovers tests under `<workspace>/n8n-functions-tests/*.test.js` (runs each via `node --test`, or via `npm test` if a `package.json` is present).
-- Discovers tests under `<workspace>/cloud-functions-tests/test_*.py` (runs `pytest`).
-- With `--target all`, runs both.
-- Prints a per-target summary.
-- Returns 0 only on all-green; non-zero otherwise.
-
-## Reshape
-
-Test directory paths can be overridden via `<workspace>/n8n-config/common.yml`:
+Resolution order is explicit `commands.test.n8n` / `commands.test.cloud`, then existing project scripts or pytest configuration, then bundled Node/pytest defaults. Commands are argument lists executed from the project; use `{filter}` to accept the optional filter. A shared command is run once when selecting `all`.
 
 ```yaml
-workspace_layout:
-  n8n_functions_tests_dir: tests/n8n
-  cloud_functions_tests_dir: tests/cloud
+# n8n-project.yml
+paths:
+  function_tests: tests/automation
+  cloud_tests: tests/service
+commands:
+  test:
+    n8n: [pnpm, run, test:automation]
+    cloud: [python3, -m, pytest, tests/service]
 ```
+
+Existing npm/pnpm/yarn/bun test scripts and pytest configuration are respected. Without them, the helper runs `*.test.js` with `node --test`, and `test_*.py` with pytest in the configured test directories. Legacy `common.yml.workspace_layout` mappings remain supported when no manifest path overrides them.
+
+The helper prints results and returns nonzero on failure. A project test contract owns its filenames/module conventions; structural workflow validation and source existence still apply. Passing these tests does not establish real deployment, execution or resynchronization success.

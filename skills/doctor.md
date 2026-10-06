@@ -4,6 +4,8 @@ description: Health check — workspace tree, env YAMLs, templates, n8n API reac
 
 # doctor
 
+Path examples use bundled defaults. Resolve source and environment locations from [project configuration](../configuration.md); preserve user preferences and existing conventions.
+
 ## When
 
 Anything goes wrong, or before an important deploy.

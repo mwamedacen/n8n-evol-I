@@ -1,5 +1,6 @@
 """Offline tests for init.py and doctor.py — no real n8n needed."""
 import subprocess
+import hashlib
 import sys
 from pathlib import Path
 from unittest.mock import patch, MagicMock
@@ -31,22 +32,25 @@ class TestInit:
         assert (ws / "N8N-WORKSPACE-MEMORY.md").is_file()
         assert (ws / "n8n-config" / ".env.example").is_file()
 
-    def test_idempotent_refusal(self, tmp_path):
+    def test_idempotent_preservation(self, tmp_path):
         ws = tmp_path / "ws"
         run(str(_harness() / "helpers" / "init.py"), "--workspace", str(ws))
+        before = {p.relative_to(ws): hashlib.sha256(p.read_bytes()).hexdigest()
+                  for p in ws.rglob("*") if p.is_file()}
         r = run(str(_harness() / "helpers" / "init.py"), "--workspace", str(ws))
-        combined = r.stdout + r.stderr
-        assert "already exists" in combined.lower()
-        assert r.returncode == 1
+        assert r.returncode == 0, r.stderr
+        after = {p.relative_to(ws): hashlib.sha256(p.read_bytes()).hexdigest()
+                 for p in ws.rglob("*") if p.is_file()}
+        assert after == before
 
-    def test_force_recreates(self, tmp_path):
+    def test_force_preserves_existing_files(self, tmp_path):
         ws = tmp_path / "ws"
         run(str(_harness() / "helpers" / "init.py"), "--workspace", str(ws))
         sentinel = ws / "sentinel.txt"
         sentinel.write_text("hello")
         r = run(str(_harness() / "helpers" / "init.py"), "--workspace", str(ws), "--force")
         assert r.returncode == 0
-        assert not sentinel.exists()
+        assert sentinel.read_text() == "hello"
 
 
 class TestDoctor:

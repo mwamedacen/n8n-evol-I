@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from helpers.workspace import workspace_root
+from helpers.workspace import workspace_root, workspace_path
 # Reuse the lock helper's expression normaliser + Execute Workflow factory.
 from helpers.add_lock_to_workflow import (
     _normalize_n8n_expression,
@@ -27,7 +27,7 @@ _SCHEDULE_TRIGGER_TYPE = "n8n-nodes-base.scheduleTrigger"
 # ---------- copy of _auto_register from publish helper ----------
 # Same logic as add_queue_publish_to_workflow._auto_register_queue_scopes;
 # kept inline here so the consumer-wrap can stand alone.
-def _auto_register_queue_scopes(workspace: Path, scope_expr: str) -> None:
+def _auto_register_queue_scopes(workspace: Path, scope_expr: str, envs: list[str] | None = None) -> None:
     static = _extract_static_scope(scope_expr)
     if static is None:
         print(
@@ -37,25 +37,18 @@ def _auto_register_queue_scopes(workspace: Path, scope_expr: str) -> None:
             file=sys.stderr,
         )
         return
-    config_dir = workspace / "n8n-config"
-    if not config_dir.is_dir():
-        return
-    import yaml as _yaml
-    for yml in sorted(config_dir.glob("*.yml")):
-        if yml.stem in ("common", "deployment_order"):
-            continue
-        try:
-            data = _yaml.safe_load(yml.read_text()) or {}
-        except Exception:
-            continue
+    from helpers.config import select_environments, load_yaml, save_yaml
+    for env_name in (envs if envs is not None else select_environments(workspace)):
+        data = load_yaml(env_name, workspace, validate=False)
         scopes = data.setdefault("queueScopes", [])
         if not isinstance(scopes, list):
             scopes = []
             data["queueScopes"] = scopes
         if static not in scopes:
             scopes.append(static)
-            yml.write_text(_yaml.dump(data, default_flow_style=False, sort_keys=False))
-            print(f"  Registered queueScopes += {static!r} in {yml.name}")
+            save_yaml(env_name, workspace, data, validate=False)
+            print(f"  Registered queueScopes += {static!r} in {env_name}")
+
 
 
 def _parse_schedule_interval(expr: str) -> dict:
@@ -335,7 +328,8 @@ def _insert_consumer(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--workspace", default=None)
+    parser.add_argument("--workspace", "--project", dest="workspace", default=None)
+    parser.add_argument("--env", "--register-in", dest="register_in", help="Target environment(s); required when more than one exists")
     parser.add_argument("--workflow-key", required=True, dest="workflow_key")
     parser.add_argument("--stream-expression", required=True, dest="stream_expression")
     parser.add_argument("--group-expression", default=None, dest="group_expression")
@@ -361,16 +355,18 @@ def main() -> None:
     args = parser.parse_args()
 
     ws = workspace_root(args.workspace)
+    from helpers.config import select_environments
+    envs = select_environments(ws, args.register_in)
 
     for prim in ("queue_pop", "queue_ack"):
-        if not (ws / "n8n-workflows-template" / f"{prim}.template.json").exists():
+        if not (workspace_path(ws, "templates", f"{prim}.template.json")).exists():
             print(
                 f"ERROR: primitive '{prim}' not found in workspace. Run create-queue first.",
                 file=sys.stderr,
             )
             sys.exit(1)
 
-    template_path = ws / "n8n-workflows-template" / f"{args.workflow_key}.template.json"
+    template_path = workspace_path(ws, "templates", f"{args.workflow_key}.template.json")
     if not template_path.exists():
         print(f"ERROR: workflow template not found: {template_path}", file=sys.stderr)
         sys.exit(1)
@@ -393,7 +389,7 @@ def main() -> None:
     template_path.write_text(json.dumps(template, indent=2))
     print(f"  Inserted Queue Pop + Has Message? + Queue Ack in {template_path}")
 
-    _auto_register_queue_scopes(ws, args.stream_expression)
+    _auto_register_queue_scopes(ws, args.stream_expression, envs)
 
     if args.cleanup_on_error:
         import subprocess
@@ -401,6 +397,7 @@ def main() -> None:
             sys.executable,
             str(Path(__file__).parent / "register_error_handler.py"),
             "--workspace", str(ws),
+            "--register-in", ",".join(envs),
             "--workflow-key", args.workflow_key,
             "--handler-key", "error_handler_queue_cleanup",
         ]

@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from helpers.workspace import workspace_root, harness_root
+from helpers.workspace import workspace_root, harness_root, workspace_path, build_path
 from helpers.config import load_yaml, load_env, get_config_value
 from helpers.n8n_client import ensure_client
 
@@ -97,6 +97,8 @@ def main() -> None:
     args = parser.parse_args()
 
     ws = workspace_root(args.workspace)
+    from helpers.workspace import ensure_workspace
+    ensure_workspace(ws)
     workflow: dict
     if args.env:
         try:
@@ -108,7 +110,7 @@ def main() -> None:
         except Exception:
             workflow = {}
     else:
-        tpath = ws / "n8n-workflows-template" / f"{args.workflow_key}.template.json"
+        tpath = workspace_path(ws, "templates") / f"{args.workflow_key}.template.json"
         if tpath.exists():
             workflow = json.loads(tpath.read_text())
         else:

@@ -31,6 +31,7 @@ def _upstash_call(base_url: str, token: str, cmd: list) -> dict:
         base_url.rstrip("/") + "/",
         headers={"Authorization": f"Bearer {token}"},
         json=cmd,
+        timeout=30,
     )
     resp.raise_for_status()
     return resp.json()
@@ -56,7 +57,7 @@ def _probe_state(base_url: str, token: str, stream: str, group: str, dlq_stream:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--workspace", default=None)
+    parser.add_argument("--workspace", "--project", dest="workspace", default=None)
     parser.add_argument("--env", required=True, help="Env name (e.g. dev, prod, dod)")
     parser.add_argument("--stream", required=True, help="Stream name (e.g. orders, test-stream)")
     parser.add_argument("--group", default=None,
@@ -69,10 +70,9 @@ def main() -> None:
     args = parser.parse_args()
 
     ws = workspace_root(args.workspace)
-    load_env(args.env, ws)
-
-    base_url = os.environ.get("UPSTASH_REDIS_REST_URL")
-    token = os.environ.get("UPSTASH_REDIS_REST_TOKEN")
+    values = load_env(args.env, ws)
+    base_url = values.get("UPSTASH_REDIS_REST_URL")
+    token = values.get("UPSTASH_REDIS_REST_TOKEN")
     if not base_url or not token:
         raise SystemExit(
             f"UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN missing from "

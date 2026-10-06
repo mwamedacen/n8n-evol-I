@@ -9,29 +9,23 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import yaml
 
-from helpers.workspace import workspace_root
+from helpers.workspace import workspace_root, workspace_path
+from helpers.config import environment_names, load_yaml, atomic_write, select_environments
 
 
-def _handler_exists(workspace: Path, handler_key: str) -> bool:
-    cfg_dir = workspace / "n8n-config"
-    if not cfg_dir.is_dir():
-        return False
-    for yml in cfg_dir.glob("*.yml"):
-        if yml.stem in ("common", "deployment_order"):
-            continue
-        try:
-            data = yaml.safe_load(yml.read_text()) or {}
-            workflows = data.get("workflows") or {}
-            if handler_key in workflows:
-                return True
-        except Exception:
-            continue
-    return False
+def _handler_exists(workspace: Path, handler_key: str, envs: list[str] | None = None) -> bool:
+    found = []
+    for env_name in envs if envs is not None else environment_names(workspace):
+        data = load_yaml(env_name, workspace, validate=False)
+        if handler_key in (data.get("workflows") or {}):
+            found.append(env_name)
+    return len(found) == len(envs) if envs is not None else bool(found)
+
 
 
 def _update_error_source_map(workspace: Path, source_key: str, handler_key: str) -> None:
     """Append an entry to common.yml.error_source_to_handler if not present."""
-    common = workspace / "n8n-config" / "common.yml"
+    common = workspace_path(workspace, "config", "common.yml")
     data: dict = {}
     if common.exists():
         data = yaml.safe_load(common.read_text()) or {}
@@ -39,23 +33,25 @@ def _update_error_source_map(workspace: Path, source_key: str, handler_key: str)
     if mapping.get(source_key) != handler_key:
         mapping[source_key] = handler_key
         data["error_source_to_handler"] = mapping
-        common.write_text(yaml.dump(data, default_flow_style=False, sort_keys=False))
+        atomic_write(common, yaml.safe_dump(data, sort_keys=False))
         print(f"  Updated common.yml: error_source_to_handler.{source_key} = {handler_key}")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--workspace", default=None)
+    parser.add_argument("--workspace", "--project", dest="workspace", default=None)
+    parser.add_argument("--env", "--register-in", dest="register_in")
     parser.add_argument("--workflow-key", required=True, dest="workflow_key")
     parser.add_argument("--handler-key", required=True, dest="handler_key")
     args = parser.parse_args()
 
     ws = workspace_root(args.workspace)
-    if not _handler_exists(ws, args.handler_key):
-        print(f"ERROR: handler '{args.handler_key}' not registered in any env YAML", file=sys.stderr)
+    envs = select_environments(ws, args.register_in)
+    if not _handler_exists(ws, args.handler_key, envs):
+        print(f"ERROR: handler '{args.handler_key}' not registered in every selected environment", file=sys.stderr)
         sys.exit(1)
 
-    template = ws / "n8n-workflows-template" / f"{args.workflow_key}.template.json"
+    template = workspace_path(ws, "templates", f"{args.workflow_key}.template.json")
     if not template.exists():
         print(f"ERROR: template not found: {template}", file=sys.stderr)
         sys.exit(1)

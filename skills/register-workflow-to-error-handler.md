@@ -6,6 +6,8 @@ user-invocable: false
 
 # register-workflow-to-error-handler
 
+Path examples use bundled defaults. Resolve source and environment locations from [project configuration](../configuration.md); preserve user preferences and existing conventions.
+
 ## When
 
 A workflow needs `settings.errorWorkflow` to route on-error to an existing Error Trigger workflow.

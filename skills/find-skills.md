@@ -6,6 +6,8 @@ user-invocable: false
 
 # find-skills
 
+Path examples use bundled defaults. Resolve source and environment locations from [project configuration](../configuration.md); preserve user preferences and existing conventions.
+
 ## When
 
 While authoring a workflow, you want to know which patterns and integration docs apply.

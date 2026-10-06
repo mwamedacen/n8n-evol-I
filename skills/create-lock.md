@@ -6,20 +6,24 @@ user-invocable: false
 
 # create-lock
 
+Path examples use bundled defaults. Resolve source and environment locations from [project configuration](../configuration.md); preserve user preferences and existing conventions.
+
 ## When
 
 First time the user wants distributed-locking or rate-limiting semantics in their workflows.
 
-This skill is the **bundled** entry point: it copies the lock pair (lock_acquisition + lock_release) by default, plus optional opt-ins for the error-handler stub and rate-limit primitive, AND registers each in every configured env's YAML so callers can reference them by ID. For copying just one primitive without registration, see [`copy-primitive.md`](copy-primitive.md).
+This skill is the **bundled** entry point: it copies the lock pair (lock_acquisition + lock_release) by default, plus optional opt-ins for the error-handler stub and rate-limit primitive, AND registers each in explicitly selected environment bindings so callers can reference them by ID. For copying just one primitive without registration, see [`copy-primitive.md`](copy-primitive.md).
 
 ## How
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/helpers/create_lock.py \
+python3 ${CLAUDE_PLUGIN_ROOT}/helpers/create_lock.py --env <env> \
   [--include-error-handler] \
   [--include-rate-limit] \
   [--force-overwrite]
 ```
+
+Omit `--env` only when exactly one environment exists. `--register-in dev,staging` explicitly selects several deployments. Ambiguous or missing environment selection stops before copying primitives. Existing templates are preserved unless `--force-overwrite` is explicitly requested.
 
 ## Side effects
 
@@ -28,7 +32,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/helpers/create_lock.py \
   - `lock_release.template.json` (always)
   - `error_handler_lock_cleanup.template.json` (with `--include-error-handler`)
   - `rate_limit_check.template.json` (with `--include-rate-limit`)
-- Registers each in every configured env's YAML (delegates to `create_workflow.py --no-template`). This mints placeholder workflow IDs that callers reference via `{{@env:workflows.lock_acquisition.id}}` etc.
+- Registers each in the selected environment's bindings (delegates to `create_workflow.py --no-template --register-in <env>`). This mints placeholder workflow IDs that callers reference via `{{@env:workflows.lock_acquisition.id}}` etc.
 - Adds them to `deployment_order.yml` under "Tier 0a: leaves" so they deploy before any caller workflow that depends on them.
 
 After this skill, the user owns the primitives in their workspace. The harness's seed copies in `${CLAUDE_PLUGIN_ROOT}/primitives/workflows/` are never written to.
@@ -47,7 +51,7 @@ The four primitives are sub-workflows that wrap the dedicated `n8n-nodes-base.re
 For active error-handler cleanup to work, every static lock scope used in your workflows must be registered in `<env>.yml.lockScopes`. `add_lock_to_workflow.py` auto-appends static literal scopes (`={{ "foo" }}`-form) here on each invocation; dynamic scopes (`={{ "lock-" + $json.x }}`) require manual maintenance. Example:
 
 ```yaml
-# n8n-config/dev.yml
+# environments/dev/workspace.yml (legacy: n8n-config/dev.yml)
 lockScopes:
   - excel-sharepoint-write
   - cms-row-update

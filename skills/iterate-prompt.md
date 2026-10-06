@@ -6,6 +6,8 @@ user-invocable: false
 
 # iterate-prompt
 
+Path examples use bundled defaults. Resolve source and environment locations from [project configuration](../configuration.md); preserve user preferences and existing conventions.
+
 ## When
 
 A prompt under `n8n-prompts/prompts/` needs measurable improvement.

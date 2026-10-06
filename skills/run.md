@@ -4,6 +4,8 @@ description: Fire a webhook-triggered workflow and assert terminal status.
 
 # run
 
+Path examples use bundled defaults. Resolve source and environment locations from [project configuration](../configuration.md); preserve user preferences and existing conventions.
+
 ## When
 
 Verify a deployed workflow actually runs.

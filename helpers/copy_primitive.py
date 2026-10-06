@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from helpers.workspace import workspace_root, harness_root
+from helpers.workspace import workspace_root, harness_root, workspace_path, build_path
 
 
 def _list_available() -> list[str]:
@@ -40,9 +40,8 @@ def _copy(workspace: Path, key: str, force_overwrite: bool) -> Path:
             f"Primitive not found: {src}\n"
             f"Available: {', '.join(available) if available else '(none)'}"
         )
-    dst_dir = workspace / "n8n-workflows-template"
-    dst_dir.mkdir(parents=True, exist_ok=True)
-    dst = dst_dir / f"{key}.template.json"
+    dst = workspace_path(workspace, "templates", f"{key}.template.json")
+    dst.parent.mkdir(parents=True, exist_ok=True)
     if dst.exists() and not force_overwrite:
         print(
             f"  WARNING: {key}.template.json already exists — re-run with "
@@ -91,6 +90,8 @@ def main() -> None:
         sys.exit(0)
 
     ws = workspace_root(args.workspace)
+    from helpers.workspace import ensure_workspace
+    ensure_workspace(ws)
     _copy(ws, args.name, force_overwrite=args.force_overwrite)
 
     if args.name in ("lock_acquisition", "lock_release", "error_handler_lock_cleanup"):

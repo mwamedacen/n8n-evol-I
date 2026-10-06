@@ -1,0 +1,6 @@
+name: n8n-evol-I
+version: 3.0.0
+description: Build, deploy and resynchronize n8n workflows from reusable project files.
+author: mwamedacen
+python_runtime: external
+provides_hooks: []

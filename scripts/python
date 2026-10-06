@@ -1,0 +1,4 @@
+#!/bin/sh
+# Resolve installed tooling without depending on the project's working directory.
+toolkit_script_dir=${0%/*}
+exec python3 "$toolkit_script_dir/../helpers/python_runtime.py" "$@"

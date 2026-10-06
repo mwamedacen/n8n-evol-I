@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Scaffold a new cloud function in <workspace>/cloud-functions/."""
 import argparse
+import re
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from helpers.workspace import workspace_root, harness_root
+from helpers.workspace import require_project, harness_root, workspace_path, load_project_manifest
 
 
 _PRIMITIVE_FILES = ("app.py", "registry.py", "requirements.txt")
@@ -66,13 +68,57 @@ def _ensure_registry_imports(registry: Path, name: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--workspace", default=None)
+    parser.add_argument("--project", "--workspace", dest="workspace", default=None)
     parser.add_argument("--name", required=True, help="Function name (snake_case)")
-    parser.add_argument("--platform", default="railway", choices=("railway", "supabase", "generic"))
+    parser.add_argument("--platform", default=None, help="Host for the selected preset/command")
+    parser.add_argument("--preset", choices=("python-fastapi",), help="Explicitly choose a bundled scaffold")
+    parser.add_argument("--scaffold-command", nargs=argparse.REMAINDER, help="Custom argv command; place last. Supports {name}, {project}, {output}, {platform}")
     args = parser.parse_args()
 
-    ws = workspace_root(args.workspace)
-    cf_dir = ws / "cloud-functions"
+    ws = require_project(args.workspace)
+    cf_dir = workspace_path(ws, "cloud_functions")
+    if not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_-]*", args.name):
+        parser.error("Function name must contain only letters, digits, '_' or '-'")
+    manifest = load_project_manifest(ws)
+    preferences = manifest.get("cloud_function", {})
+    commands = manifest.get("commands", {})
+    if not isinstance(preferences, dict) or not isinstance(commands, dict):
+        parser.error("cloud_function and commands must be mappings in n8n-project.yml")
+    custom = args.scaffold_command
+    if custom is None and args.preset is None:
+        custom = commands.get("scaffold")
+    if custom is not None:
+        if not isinstance(custom, list) or not custom or any(not isinstance(arg, str) or not arg for arg in custom):
+            parser.error("scaffold command must be a nonempty argument list")
+        platform = args.platform or preferences.get("platform", "generic")
+        replacements = {"{name}": args.name, "{project}": str(ws), "{output}": str(cf_dir), "{platform}": str(platform)}
+        argv = list(custom)
+        for token, value in replacements.items():
+            argv = [arg.replace(token, value) for arg in argv]
+        cf_dir.mkdir(parents=True, exist_ok=True)
+        result = subprocess.run(argv, cwd=ws)
+        if result.returncode:
+            raise SystemExit(result.returncode)
+        print(f"Project scaffold command completed for '{args.name}'.")
+        return
+
+    preset = args.preset or preferences.get("preset")
+    registry = cf_dir / "registry.py"
+    known_registry = registry.is_file() and "EXPOSED_FUNCTIONS = {" in registry.read_text()
+    existing_service = cf_dir.is_dir() and any(p.is_file() and p.name not in (".gitignore", "__init__.py") for p in cf_dir.rglob("*"))
+    if preset is None and existing_service and not known_registry:
+        parser.error("Existing service preserved. Set commands.scaffold to its generator, or explicitly select --preset python-fastapi.")
+    if preset not in (None, "python-fastapi"):
+        parser.error(f"Unknown preset {preset!r}; use commands.scaffold for your existing language/framework")
+    if not args.name.isidentifier():
+        parser.error("The python-fastapi preset requires a Python identifier for --name")
+    if registry.exists() and not known_registry:
+        parser.error("Existing registry.py preserved: use commands.scaffold to extend its registration convention")
+    platform = args.platform or preferences.get("platform")
+    if platform is None:
+        platform = "railway" if not existing_service or (cf_dir / "railway.toml").exists() else "generic"
+    if platform not in _PLATFORM_FILES:
+        parser.error(f"Host {platform!r} has no bundled config; select generic or provide commands.scaffold")
     cf_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. Seed framework files (app.py, registry.py, requirements.txt) if absent
@@ -83,7 +129,7 @@ def main() -> None:
             print(f"  Wrote {cf_dir / fn}")
 
     # 2. Platform config files (only if absent)
-    for fn in _PLATFORM_FILES[args.platform]:
+    for fn in _PLATFORM_FILES[platform]:
         copied = _copy_if_absent(src_dir / fn, cf_dir / fn)
         if copied:
             print(f"  Wrote {cf_dir / fn}")
@@ -114,7 +160,7 @@ def main() -> None:
     print(f"  Wired '{args.name}' into registry.py")
 
     # 6. Add a paired test stub in cloud-functions-tests/
-    tests_dir = ws / "cloud-functions-tests"
+    tests_dir = workspace_path(ws, "cloud_tests")
     tests_dir.mkdir(parents=True, exist_ok=True)
     test_file = tests_dir / f"test_{args.name}.py"
     if not test_file.exists():

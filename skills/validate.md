@@ -4,6 +4,8 @@ description: Structural REST validation for a template or generated JSON.
 
 # validate
 
+Path examples use bundled defaults. Resolve source and environment locations from [project configuration](../configuration.md); preserve user preferences and existing conventions.
+
 ## When
 
 Before any deploy. Catches structural breakage early.

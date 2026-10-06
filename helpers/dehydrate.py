@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Convert raw n8n workflow JSON into a template (inverse of hydrate)."""
 import argparse
+import copy
 import json
 import re
 import sys
@@ -8,9 +9,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from helpers.workspace import workspace_root
+from helpers.workspace import workspace_root, workspace_path, build_path
 from helpers.config import load_yaml, flatten_config
 from helpers.placeholder import js_resolver, py_resolver
+from helpers.placeholder.paths import source_file
+from helpers.workspace import validate_workflow_key
 
 # Volatile / runtime-only fields that must not appear in templates.
 # (Live n8n GET /workflows/:id returns these alongside the canonical template
@@ -29,7 +32,7 @@ _METADATA_FIELDS = frozenset({
 
 def _strip_metadata(data: dict) -> dict:
     """Remove volatile / runtime fields recursively from the top-level."""
-    return {k: v for k, v in data.items() if k not in _METADATA_FIELDS}
+    return {k: copy.deepcopy(v) for k, v in data.items() if k not in _METADATA_FIELDS}
 
 
 def _restore_uuids_by_name(data: dict, existing_template: dict) -> dict:
@@ -57,6 +60,18 @@ def _reverse_env_values(text: str, env_data: dict) -> str:
     length >= 4 to avoid clobbering tiny matches.
     """
     flat = flatten_config(env_data)
+    references = {k: v for k, v in flat.items() if k.startswith(("workflows.", "credentials.")) and isinstance(v, str) and v}
+    def reverse(value):
+        if isinstance(value, dict):
+            return {k: reverse(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [reverse(v) for v in value]
+        if isinstance(value, str):
+            matches = [k for k, v in references.items() if v == value]
+            if len(matches) == 1:
+                return "{{@env:" + matches[0] + "}}"
+        return value
+    text = json.dumps(reverse(json.loads(text)), indent=2)
     sortable = sorted(
         (
             (k, v) for k, v in flat.items()
@@ -82,10 +97,11 @@ def dehydrate_data(
     remove_triggers: bool = False,
 ) -> str:
     """Run the full dehydrate pipeline on raw workflow JSON. Return template JSON text."""
+    validate_workflow_key(output_key)
     cleaned = _strip_metadata(raw)
 
     # If a previous template exists, use it as a guide for UUID restoration
-    existing_path = workspace / "n8n-workflows-template" / f"{output_key}.template.json"
+    existing_path = workspace_path(workspace, "templates", f"{output_key}.template.json")
     if existing_path.exists():
         try:
             existing = json.loads(existing_path.read_text())
@@ -104,10 +120,23 @@ def dehydrate_data(
     try:
         env_data = load_yaml(env_name, workspace)
         text = _reverse_env_values(text, env_data)
-    except Exception:
-        pass  # if env YAML missing, skip reverse-substitution
+    except FileNotFoundError:
+        pass  # standalone import without environment config retains raw values for review
 
-    # Restore JS / Python placeholders from DEHYDRATE markers
+    # A first import has no provenance with which to merge edited source bodies.
+    # Refuse ambiguous collapse instead of silently discarding remote code.
+    def check_markers(value):
+        if isinstance(value, dict):
+            for v in value.values(): check_markers(v)
+        elif isinstance(value, list):
+            for v in value: check_markers(v)
+        elif isinstance(value, str):
+            for pattern in (js_resolver._MARKER_PATTERN, py_resolver._MARKER_PATTERN):
+                for match in pattern.finditer(value):
+                    path = source_file(workspace, match.group(2).strip())
+                    if not path.exists() or path.read_text().strip("\n") != match.group(3).strip("\n"):
+                        raise ValueError(f"Remote code differs from {path}; retain the raw export and establish a reviewed sync baseline")
+    check_markers(json.loads(text))
     text = js_resolver.dehydrate(text)
     text = py_resolver.dehydrate(text)
 
@@ -124,12 +153,17 @@ def main() -> None:
     args = parser.parse_args()
 
     ws = workspace_root(args.workspace)
+    from helpers.workspace import ensure_workspace
+    ensure_workspace(ws)
     raw = json.loads(Path(args.input).read_text())
     text = dehydrate_data(raw, args.env, ws, args.output_key, args.remove_triggers)
-    out_dir = ws / "n8n-workflows-template"
+    out_dir = workspace_path(ws, "templates")
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_file = out_dir / f"{args.output_key}.template.json"
-    out_file.write_text(text)
+    out_file = workspace_path(ws, "templates", f"{args.output_key}.template.json")
+    if out_file.exists() and out_file.read_text() != text:
+        raise SystemExit("Destination already exists; use conflict-checked resync or choose a new output key")
+    from helpers.sync_state import atomic_write
+    atomic_write(out_file, text)
     print(f"Wrote {out_file}")
 
 

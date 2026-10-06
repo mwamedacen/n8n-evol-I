@@ -6,6 +6,8 @@ user-invocable: false
 
 # add-rate-limit-to-workflow
 
+Path examples use bundled defaults. Resolve source and environment locations from [project configuration](../configuration.md); preserve user preferences and existing conventions.
+
 ## When
 
 A workflow needs to throttle requests per scope (per user, per tenant, per route) so that bursts above a chosen `limit` per `windowSeconds` are denied (or stopped, or surfaced as errors).

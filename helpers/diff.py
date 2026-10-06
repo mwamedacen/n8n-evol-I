@@ -8,7 +8,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from helpers.workspace import workspace_root
+from helpers.workspace import workspace_root, workspace_path, build_path
 from helpers.config import load_yaml, load_env, get_config_value
 from helpers.n8n_client import ensure_client
 
@@ -70,11 +70,13 @@ def main() -> None:
     args = parser.parse_args()
 
     ws = workspace_root(args.workspace)
+    from helpers.workspace import ensure_workspace
+    ensure_workspace(ws)
     load_env(args.env, ws)
     yaml_data = load_yaml(args.env, ws)
     wf_id = str(get_config_value(yaml_data, f"workflows.{args.workflow_key}.id"))
 
-    built = ws / "n8n-build" / args.env / f"{args.workflow_key}.generated.json"
+    built = build_path(ws, args.env) / f"{args.workflow_key}.generated.json"
     if not built.exists():
         print(f"ERROR: no built JSON at {built}; run hydrate first", file=sys.stderr)
         sys.exit(1)

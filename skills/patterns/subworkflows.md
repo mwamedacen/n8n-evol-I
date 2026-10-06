@@ -6,6 +6,8 @@ user-invocable: false
 
 # Pattern: subworkflows
 
+Paths and examples use bundled defaults; resolve actual paths and environment storage through [project configuration](../../configuration.md).
+
 A "subworkflow" is a workflow called by another workflow via the `n8n-nodes-base.executeWorkflow` node. The callee uses `n8n-nodes-base.executeWorkflowTrigger` as its entry point.
 
 ## ID resolution

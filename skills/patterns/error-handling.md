@@ -6,6 +6,8 @@ user-invocable: false
 
 # Pattern: error handling
 
+Paths and examples use bundled defaults; resolve actual paths and environment storage through [project configuration](../../configuration.md).
+
 A workflow error in n8n isn't just "something went wrong" — it's an event that needs to flow through three steps:
 
 1. **Capture** — n8n catches the error and routes it to a dedicated error-handler workflow.

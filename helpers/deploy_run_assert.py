@@ -24,7 +24,9 @@ def main() -> None:
     parser.add_argument("--workflow-key", required=True, dest="workflow_key")
     parser.add_argument("--payload", default="{}")
     parser.add_argument("--timeout", type=int, default=30)
-    parser.add_argument("--no-activate", action="store_true")
+    activation = parser.add_mutually_exclusive_group()
+    activation.add_argument("--no-activate", action="store_true")
+    activation.add_argument("--activate", action="store_true", help="Publish before executing a new-format deployment")
     parser.add_argument(
         "--expect-status",
         default="success",
@@ -35,6 +37,8 @@ def main() -> None:
     args = parser.parse_args()
 
     ws = workspace_root(args.workspace)
+    from helpers.workspace import ensure_workspace
+    ensure_workspace(ws)
     helpers = Path(__file__).parent
     ws_args = ["--workspace", str(ws)]
 
@@ -54,6 +58,8 @@ def main() -> None:
     deploy_cmd = [sys.executable, str(helpers / "deploy.py"), *ws_args, "--env", args.env, "--workflow-key", args.workflow_key]
     if args.no_activate:
         deploy_cmd.append("--no-activate")
+    if args.activate:
+        deploy_cmd.append("--activate")
     _run(deploy_cmd, stage="deploy")
 
     # 4. run with expectation

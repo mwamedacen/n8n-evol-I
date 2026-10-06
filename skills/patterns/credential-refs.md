@@ -6,11 +6,13 @@ user-invocable: false
 
 # Pattern: credential refs (reference)
 
+Paths and examples use bundled defaults; resolve actual paths and environment storage through [project configuration](../../configuration.md).
+
 This is a **reference pattern** documenting the YAML shape and the `{{@env:credentials.<key>....}}` placeholder syntax. The actual creation/linking flow lives in [`skills/manage-credentials.md`](../manage-credentials.md).
 
 ## YAML shape
 
-`<workspace>/n8n-config/<env>.yml` stores credentials under the `credentials` block:
+The helper presents a merged `credentials` mapping. Manifest projects persist it privately in `<env-path>/bindings.json`; legacy projects use `<config>/<env>.yml`. This YAML example shows the effective shape:
 
 ```yaml
 credentials:
@@ -44,13 +46,13 @@ Workflow templates reference credentials via the `credentials` block on each nod
 
 ## Why both `id` AND `name`
 
-n8n verifies BOTH `id` and `name` match on activate. If a credential is renamed in the UI without resyncing, activation fails silently after deploy and only surfaces during activation — so a UI-side rename followed by deploy without resync is a common foot-gun.
+Keep the ID and display name consistent with the selected deployment. A renamed or replaced credential may require refreshing the binding before deployment.
 
-**Mitigation:** if you suspect a name mismatch, run `resync` (which pulls the live credential names back into the YAML) or `doctor` to spot drift before deploying.
+Re-link the verified credential with `manage_credentials.py list-link`; use `doctor` and deployment preflight to inspect failures. Resync preserves logical references and does not promise to update credential bindings automatically.
 
 ## Adding credentials
 
-For the actual flow — writing secrets into `.env.<env>`, the helper POSTing to n8n or listing existing credentials, capturing `id`/`name` into `<env>.yml` — see [`skills/manage-credentials.md`](../manage-credentials.md).
+For selecting the private secret source, creating or linking a credential, and persisting its environment binding, see [`skills/manage-credentials.md`](../manage-credentials.md).
 
 ## Per-service quirks
 

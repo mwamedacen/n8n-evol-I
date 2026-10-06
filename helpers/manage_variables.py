@@ -25,7 +25,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from helpers.workspace import workspace_root
-from helpers.config import load_env
 from helpers.n8n_client import ensure_client
 
 
@@ -93,7 +92,7 @@ def cmd_delete(args, client) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--workspace", default=None)
+    parser.add_argument("--workspace", "--project", dest="workspace", default=None)
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p_list = sub.add_parser("list", help="GET /variables")
@@ -123,7 +122,6 @@ def main() -> None:
     args = parser.parse_args()
 
     ws = workspace_root(args.workspace)
-    load_env(args.env, ws)
     client = ensure_client(args.env, ws)
 
     handlers = {

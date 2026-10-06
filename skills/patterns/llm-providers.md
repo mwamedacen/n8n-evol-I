@@ -6,13 +6,15 @@ user-invocable: false
 
 # Pattern: LLM providers
 
+Paths and examples use bundled defaults; resolve actual paths and environment storage through [project configuration](../../configuration.md).
+
 ## OpenRouter via `openAiApi`
 
 OpenRouter's REST API is OpenAI-API-compatible. n8n's `openAiApi` credential type, OpenAI node, and AI Agent / Chat Model nodes all consume OpenRouter transparently — you just point the credential's `Base URL` at OpenRouter.
 
 To set up an OpenRouter credential:
 
-1. Set `OPENROUTER_API_KEY=...` in `<workspace>/n8n-config/.env.<env>`.
+1. Set `OPENROUTER_API_KEY=...` in the selected environment's private `.env` (legacy: `<config>/.env.<env>`).
 2. Run `manage-credentials.md` (Path A):
 
 ```bash
@@ -23,9 +25,9 @@ python3 ${CLAUDE_PLUGIN_ROOT}/helpers/manage_credentials.py create \
   --env-vars apiKey=OPENROUTER_API_KEY,url=OPENROUTER_BASE_URL
 ```
 
-(set `OPENROUTER_BASE_URL=https://openrouter.ai/api/v1` in `.env.<env>`).
+(set `OPENROUTER_BASE_URL=https://openrouter.ai/api/v1` in the same private environment file).
 
-3. The credential's `id`+`name` lands in `<env>.yml` under `credentials.openrouter`.
+3. The credential's `id`+`name` is recorded under `credentials.openrouter` in the selected environment's private bindings (legacy: environment YAML).
 
 For the actual setup walkthrough, see [`skills/manage-credentials.md`](../manage-credentials.md).
 

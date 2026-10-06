@@ -1,0 +1,17 @@
+{
+  "name": "n8n-evol-I",
+  "version": "3.0.0",
+  "description": "Build, deploy and resynchronize n8n workflows from reusable project files.",
+  "author": { "name": "mwamedacen" },
+  "homepage": "https://github.com/mwamedacen/n8n-evol-I",
+  "repository": "https://github.com/mwamedacen/n8n-evol-I",
+  "license": "MIT",
+  "skills": "./.codex-plugin/skills/",
+  "hooks": {},
+  "interface": {
+    "displayName": "n8n from project files",
+    "shortDescription": "Reusable n8n workflows, isolated environments and safe resync",
+    "developerName": "mwamedacen",
+    "category": "Developer Tools"
+  }
+}

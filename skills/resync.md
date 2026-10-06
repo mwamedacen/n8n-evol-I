@@ -4,6 +4,12 @@ description: Pull live state of one workflow back into its template.
 
 # resync
 
+Path examples use bundled defaults. Resolve source and environment locations from [project configuration](../configuration.md); preserve user preferences and existing conventions.
+
+## Current behavior
+
+Use `--preview` to inspect the proposed file list. Resync compares the deployed baseline, local source and remote content. Conflicts stop without overwriting files; inspect the private environment state/incoming snapshot. All workflows are staged before resync_all applies shared source updates.
+
 ## When
 
 After someone edits a workflow in the n8n UI and you want the template to reflect those changes.
@@ -11,15 +17,11 @@ After someone edits a workflow in the n8n UI and you want the template to reflec
 ## How
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/helpers/resync.py --env <env> --workflow-key <key>
+python3 ${CLAUDE_PLUGIN_ROOT}/helpers/resync.py --env <env> --workflow-key <key> [--preview]
 ```
 
 ## Side effects
 
-- `GET /api/v1/workflows/<id>` from env's n8n.
-- Runs the dehydrate pipeline:
-  - Strips volatile metadata (id, active, versionId, createdAt, updatedAt, tags, pinData).
-  - Restores UUID placeholders by node-name lookup against the existing template.
-  - Reverse-substitutes env values back into `{{@env:...}}` placeholders.
-  - Restores JS / Python code blocks by collapsing the round-trip markers (`#:js:` / `MATCH:js:` for JS, `MATCH:py:` for Python; legacy `DEHYDRATE` markers also accepted on read for rollforward).
-- Writes `<workspace>/n8n-workflows-template/<key>.template.json`.
+Reads the remote workflow and saves a private incoming snapshot. With a baseline, it compares remote content, prior source and current local source, preserving logical environment references and restoring accepted edits to external code/prompt/asset files. Without a baseline, it can import into an absent template; an existing differing template stops for review.
+
+`--preview` reports proposed files without changing source. On apply, source changes are staged together with backups. Conflicts preserve local files. Baselines and snapshots live in the environment state directory; see [project configuration](../configuration.md). Raw snapshots retain remote metadata separately from reusable definitions.

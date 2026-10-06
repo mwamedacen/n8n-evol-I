@@ -85,6 +85,7 @@ def test_cli_no_name_lists_and_exits_two(tmp_path):
 
 def test_cli_lock_primitive_prints_registration_note(tmp_path):
     ws = tmp_path / "ws"
+    (ws / "n8n-config").mkdir(parents=True)
     (ws / "n8n-workflows-template").mkdir(parents=True)
     r = subprocess.run(
         [sys.executable, str(_HELPER), "--workspace", str(ws), "--name", "lock_acquisition"],
@@ -93,3 +94,22 @@ def test_cli_lock_primitive_prints_registration_note(tmp_path):
     )
     assert r.returncode == 0, r.stderr
     assert "create_lock.py" in r.stdout, r.stdout
+
+
+@pytest.mark.parametrize("helper", ["copy", "lock"])
+@pytest.mark.parametrize("dangling", [False, True])
+def test_copy_does_not_follow_destination_symlink_outside_templates(tmp_path, helper, dangling):
+    from helpers.create_lock import _copy_primitive
+    ws = tmp_path / "project"
+    templates = ws / "n8n-workflows-template"
+    templates.mkdir(parents=True)
+    outside = tmp_path / "unrelated.json"
+    if not dangling:
+        outside.write_text("preserve user data")
+    (templates / "lock_acquisition.template.json").symlink_to(outside)
+    with pytest.raises(ValueError, match="escapes"):
+        if helper == "copy":
+            _copy(ws, "lock_acquisition", force_overwrite=True)
+        else:
+            _copy_primitive(ws, "lock_acquisition", force_overwrite=True)
+    assert not outside.exists() if dangling else outside.read_text() == "preserve user data"

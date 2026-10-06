@@ -1,0 +1,12 @@
+{
+  "name": "n8n-evol",
+  "owner": {"name": "mwamedacen"},
+  "plugins": [
+    {
+      "name": "n8n-evol-I",
+      "description": "Agent-friendly n8n workflow templates, skills, and reusable primitives.",
+      "version": "3.0.0",
+      "source": "./"
+    }
+  ]
+}

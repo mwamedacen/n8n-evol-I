@@ -6,6 +6,8 @@ user-invocable: false
 
 # deploy-run-assert
 
+Path examples use bundled defaults. Resolve source and environment locations from [project configuration](../configuration.md); preserve user preferences and existing conventions.
+
 ## When
 
 Verify a workflow end-to-end in a single call after authoring or modifying it.
@@ -13,7 +15,7 @@ Verify a workflow end-to-end in a single call after authoring or modifying it.
 ## How
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/helpers/deploy_run_assert.py --env <env> --workflow-key <key> [--payload '{"x":1}'] [--timeout 30] [--no-activate]
+python3 ${CLAUDE_PLUGIN_ROOT}/helpers/deploy_run_assert.py --env <env> --workflow-key <key> --activate [--payload '{"x":1}'] [--timeout 30] [--no-activate]
 ```
 
 ## Side effects

@@ -4,6 +4,8 @@ description: Investigate a failing or missing n8n workflow execution — from va
 
 # debug
 
+Path examples use bundled defaults. Resolve source and environment locations from [project configuration](../configuration.md); preserve user preferences and existing conventions.
+
 ## When
 
 A workflow's behavior in production is wrong: vague ("I didn't get the email") or pinpointed ("workflow Y errored at 2pm"). Use this skill to investigate the actual cause from execution data, not from inference.

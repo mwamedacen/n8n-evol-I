@@ -21,7 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from helpers.workspace import workspace_root
+from helpers.workspace import workspace_root, workspace_path, build_path
 
 
 def _check_dspy() -> bool:
@@ -46,7 +46,7 @@ def _resolve_prompt_file(prompts_dir: Path, name: str) -> Path | None:
 
 
 def _load_dataset(workspace: Path, name: str) -> list:
-    p = workspace / "n8n-prompts" / "datasets" / f"{name}.json"
+    p = workspace_path(workspace, "prompts") / "datasets" / f"{name}.json"
     if not p.exists():
         return []
     return json.loads(p.read_text())
@@ -104,7 +104,9 @@ def main() -> None:
     from helpers._dspy_config import configure_lm
 
     ws = workspace_root(args.workspace)
-    prompts_dir = ws / "n8n-prompts" / "prompts"
+    from helpers.workspace import ensure_workspace
+    ensure_workspace(ws)
+    prompts_dir = workspace_path(ws, "prompts") / "prompts"
     prompt_file = _resolve_prompt_file(prompts_dir, args.prompt)
     schema_file = prompts_dir / f"{args.prompt}_schema.json"
 
