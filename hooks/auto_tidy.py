@@ -14,6 +14,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from helpers.workspace import discover_project, workspace_path
+
 
 def main() -> None:
     try:
@@ -26,25 +29,33 @@ def main() -> None:
         sys.exit(0)
 
     p = Path(file_path).resolve()
-    # Convention: <ws>/n8n-workflows-template/<key>.template.json
-    ws = p.parent.parent
-    key = p.stem.removesuffix(".template")
-
-    # Guard: derived workspace must contain the expected subdirectory
-    if not (ws / "n8n-workflows-template").is_dir():
-        print(
-            f"[auto_tidy] skipping: derived workspace {ws} has no n8n-workflows-template/ "
-            f"(file_path does not match <ws>/n8n-workflows-template/<key>.template.json convention)",
-            file=sys.stderr,
-        )
-        sys.exit(0)
+    try:
+        # An edited nested project owns its files even when the agent's cwd is
+        # an outer project. Cwd remains useful for explicit external mappings.
+        candidates = (discover_project(p.parent), discover_project(Path(event.get("cwd") or Path.cwd())))
+        ws = None
+        for candidate in dict.fromkeys(candidates):
+            if candidate is None:
+                continue
+            try:
+                relative = p.relative_to(workspace_path(candidate, "templates"))
+            except ValueError:
+                continue
+            ws = candidate
+            break
+        if ws is None:
+            return
+        key = relative.as_posix().removesuffix(".template.json")
+    except (ValueError, RuntimeError) as error:
+        print(f"[auto_tidy] skipping: {error}", file=sys.stderr)
+        return
 
     # Fall back to script-relative root so skill-mode (no CLAUDE_PLUGIN_ROOT) works too
     plugin_root = os.environ.get("CLAUDE_PLUGIN_ROOT") or str(Path(__file__).resolve().parent.parent)
     helper = Path(plugin_root) / "helpers" / "tidy_workflow.py"
 
     result = subprocess.run(
-        ["python3", str(helper),
+        [sys.executable, str(helper),
          "--workspace", str(ws),
          "--workflow-key", key,
          "--in-place"],

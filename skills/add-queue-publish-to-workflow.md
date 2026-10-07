@@ -6,6 +6,8 @@ user-invocable: false
 
 # add-queue-publish-to-workflow
 
+Path examples use bundled defaults. Resolve source and environment locations from [project configuration](../configuration.md); preserve user preferences and existing conventions.
+
 ## When
 
 A workflow needs to emit a durable message to a Redis Stream that another workflow (the consumer) will drain at its own pace, with backpressure + retry + optional DLQ. You're the producer side.
@@ -13,7 +15,7 @@ A workflow needs to emit a durable message to a Redis Stream that another workfl
 ## How
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/helpers/add_queue_publish_to_workflow.py \
+python3 ${CLAUDE_PLUGIN_ROOT}/helpers/add_queue_publish_to_workflow.py --env <env> \
   --workflow-key <wf> \
   --stream-expression "={{ 'orders' }}" \
   [--max-len 10000] \

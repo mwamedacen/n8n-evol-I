@@ -6,6 +6,8 @@ user-invocable: false
 
 # copy-primitive
 
+Path examples use bundled defaults. Resolve source and environment locations from [project configuration](../configuration.md); preserve user preferences and existing conventions.
+
 ## When
 
 You want to drop a single primitive template into your workspace WITHOUT going through `create-lock` (which bundles the lock pair + opt-ins and registers in env YAMLs). Common cases:
@@ -14,7 +16,7 @@ You want to drop a single primitive template into your workspace WITHOUT going t
 - Copying a primitive into a brand-new workspace before bootstrap-env exists, so you can iterate on the template before deploy.
 - Force-updating one primitive after a harness upgrade without touching the others.
 
-For the lock pair specifically, prefer `create-lock.md` — it copies AND registers in every env YAML. Use this skill when you need finer control or when the bundled-flow doesn't fit.
+For the lock pair specifically, prefer `create-lock.md` — it copies and registers in explicitly selected environments. Use this skill when you need finer control or when the bundled-flow doesn't fit.
 
 ## How
 

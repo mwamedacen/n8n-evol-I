@@ -9,6 +9,7 @@ def _stub_workspace(tmp_path: Path) -> Path:
     ws = tmp_path / "ws"
     (ws / "n8n-config").mkdir(parents=True)
     (ws / "n8n-workflows-template").mkdir()
+    (ws / "n8n-config/dev.yml").write_text("name: dev\ndisplayName: Development\nn8n:\n  instanceName: https://dev.invalid\n")
     return ws
 
 

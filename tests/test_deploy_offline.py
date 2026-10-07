@@ -8,6 +8,18 @@ import pytest
 import yaml
 
 
+@pytest.fixture(autouse=True)
+def remote_preflight():
+    with patch("helpers.n8n_client.requests.get") as get:
+        get.return_value.raise_for_status.return_value = None
+        def current():
+            from helpers.n8n_client import requests
+            saved = requests.put.call_args
+            return saved.kwargs["json"] if saved else {"id": "wf-id-123", "nodes": [], "connections": {}, "settings": {}}
+        get.return_value.json.side_effect = current
+        yield get
+
+
 def _harness() -> Path:
     return Path(__file__).parent.parent
 
@@ -38,7 +50,126 @@ def _make_workspace(tmp_path: Path) -> Path:
     return ws
 
 
+def test_bulk_preflight_refuses_active_target_before_any_deployment(tmp_path, monkeypatch):
+    from helpers import deploy, deploy_all
+    ws = _make_workspace(tmp_path)
+    config_path = ws / 'n8n-config/dev.yml'
+    config = yaml.safe_load(config_path.read_text())
+    config['workflows']['later'] = {'id': 'wf-active', 'name': 'Later'}
+    config_path.write_text(yaml.safe_dump(config))
+    templates = ws / 'n8n-workflows-template'
+    (templates / 'later.template.json').write_bytes((templates / 'smoke.template.json').read_bytes())
+    (ws / 'n8n-config/deployment_order.yml').write_text(yaml.safe_dump({'tiers': {'Tier 1': ['smoke', 'later']}}))
+    mutations = []
+
+    class Client:
+        base_url = 'http://localhost:8080'
+        def get_workflow(self, key):
+            return {'id': key, 'nodes': [], 'connections': {}, 'settings': {}, 'active': key == 'wf-active'}
+        def put(self, *args):
+            mutations.append(args)
+            raise AssertionError('Bulk preflight must finish before any remote mutation')
+        def post(self, *args):
+            mutations.append(args)
+            raise AssertionError('Preview must not activate a workflow')
+
+    monkeypatch.setattr(deploy, 'ensure_client', lambda *args: Client())
+    calls = []
+    def run(command):
+        calls.append(command)
+        with monkeypatch.context() as patcher:
+            patcher.setattr(sys, 'argv', command[1:])
+            try:
+                deploy.main()
+            except SystemExit as error:
+                return type('Result', (), {'returncode': error.code if isinstance(error.code, int) else 1})()
+        return type('Result', (), {'returncode': 0})()
+    monkeypatch.setattr(deploy_all.subprocess, 'run', run)
+    monkeypatch.setattr(sys, 'argv', ['deploy_all.py', '--workspace', str(ws), '--env', 'dev'])
+    with pytest.raises(SystemExit) as error:
+        deploy_all.main()
+    assert error.value.code == 1
+    assert len(calls) == 2
+    assert all('--preview' in command and '--no-activate' in command for command in calls)
+    assert not mutations
+
+
+@pytest.mark.parametrize("workflow_id", [None, "", "  ", "placeholder", "your-workflow-id"])
+@pytest.mark.parametrize("preview", [False, True])
+def test_unminted_draft_refused_before_build_or_network(tmp_path, monkeypatch, workflow_id, preview):
+    from helpers import deploy
+    ws = _make_workspace(tmp_path)
+    path = ws / 'n8n-config/dev.yml'
+    config = yaml.safe_load(path.read_text())
+    config['workflows']['smoke']['id'] = workflow_id
+    path.write_text(yaml.safe_dump(config))
+    monkeypatch.setattr(deploy, 'ensure_client', lambda *args: pytest.fail('Draft must not contact n8n'))
+    monkeypatch.setattr('helpers.hydrate.hydrate', lambda *args, **kwargs: pytest.fail('Draft must not build'))
+    args = ['deploy.py', '--workspace', str(ws), '--env', 'dev', '--workflow-key', 'smoke']
+    monkeypatch.setattr(sys, 'argv', args + (['--preview'] if preview else []))
+    with pytest.raises(SystemExit, match='No deployed workflow ID'):
+        deploy.main()
+
+
+def test_bulk_unminted_later_draft_refuses_before_any_mutation(tmp_path, monkeypatch):
+    from helpers import deploy, deploy_all
+    ws = _make_workspace(tmp_path)
+    config_path = ws / 'n8n-config/dev.yml'
+    config = yaml.safe_load(config_path.read_text())
+    config['workflows']['draft'] = {'id': '', 'name': 'Draft'}
+    config_path.write_text(yaml.safe_dump(config))
+    templates = ws / 'n8n-workflows-template'
+    (templates / 'draft.template.json').write_bytes((templates / 'smoke.template.json').read_bytes())
+    (ws / 'n8n-config/deployment_order.yml').write_text(yaml.safe_dump({'tiers': {'Tier 1': ['smoke', 'draft']}}))
+    reads, mutations, calls = [], [], []
+
+    class Client:
+        base_url = 'http://localhost:8080'
+        def get_workflow(self, key):
+            reads.append(key)
+            return {'id': key, 'nodes': [], 'connections': {}, 'settings': {}, 'active': False}
+        def put(self, *args):
+            mutations.append(args)
+            raise AssertionError('An unminted later draft must block the entire rollout')
+        def post(self, *args):
+            mutations.append(args)
+            raise AssertionError('Preflight cannot activate')
+
+    monkeypatch.setattr(deploy, 'ensure_client', lambda *args: Client())
+    def run(command):
+        calls.append(command)
+        with monkeypatch.context() as patcher:
+            patcher.setattr(sys, 'argv', command[1:])
+            try:
+                deploy.main()
+            except SystemExit as error:
+                return type('Result', (), {'returncode': error.code if isinstance(error.code, int) else 1})()
+        return type('Result', (), {'returncode': 0})()
+    monkeypatch.setattr(deploy_all.subprocess, 'run', run)
+    monkeypatch.setattr(sys, 'argv', ['deploy_all.py', '--workspace', str(ws), '--env', 'dev', '--activate'])
+    with pytest.raises(SystemExit) as error:
+        deploy_all.main()
+    assert error.value.code == 1
+    assert len(calls) == 2 and all('--preview' in command for command in calls)
+    assert reads == ['wf-id-123']
+    assert not mutations
+
+
 class TestDeploy:
+    def test_adoption_retains_selected_legacy_environment_activation(self, tmp_path, monkeypatch):
+        from helpers.init import _scaffold
+        from helpers import deploy
+        ws = _make_workspace(tmp_path)
+        _scaffold(ws, adopt=True)
+        monkeypatch.setattr(sys, 'argv', ['deploy.py', '--workspace', str(ws), '--env', 'dev', '--workflow-key', 'smoke'])
+        with patch('helpers.n8n_client.requests.put') as put, patch('helpers.n8n_client.requests.post') as post:
+            put.return_value.raise_for_status.return_value = None
+            put.return_value.json.return_value = {'id': 'wf-id-123'}
+            post.return_value.raise_for_status.return_value = None
+            deploy.main()
+        assert post.called
+        assert post.call_args[0][0].endswith('/workflows/wf-id-123/activate')
+
     def test_deploy_calls_put_then_activate(self, tmp_path):
         ws = _make_workspace(tmp_path)
 

@@ -158,7 +158,9 @@ class TestCursorPagination:
                  "nextCursor": None}
         responses = iter([page1, page2])
 
-        def get_side_effect(url, headers=None, params=None):
+        def get_side_effect(url, headers=None, params=None, timeout=None, allow_redirects=True):
+            assert timeout == 30
+            assert allow_redirects is False
             r = MagicMock()
             r.raise_for_status.return_value = None
             r.json.return_value = next(responses)

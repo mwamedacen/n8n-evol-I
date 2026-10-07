@@ -6,6 +6,8 @@ user-invocable: false
 
 # add-queue-consumer-to-workflow
 
+Path examples use bundled defaults. Resolve source and environment locations from [project configuration](../configuration.md); preserve user preferences and existing conventions.
+
 ## When
 
 You have a producer (`add-queue-publish-to-workflow`) feeding a stream, and you need a consumer to drain it with bounded concurrency + ack-on-success + optional DLQ.
@@ -13,7 +15,7 @@ You have a producer (`add-queue-publish-to-workflow`) feeding a stream, and you 
 ## How
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/helpers/add_queue_consumer_to_workflow.py \
+python3 ${CLAUDE_PLUGIN_ROOT}/helpers/add_queue_consumer_to_workflow.py --env <env> \
   --workflow-key <wf> \
   --stream-expression "={{ 'orders' }}" \
   [--group-expression "={{ 'orders-cg' }}"] \

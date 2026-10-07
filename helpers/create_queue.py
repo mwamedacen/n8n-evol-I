@@ -6,7 +6,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from helpers.workspace import workspace_root
+from helpers.workspace import require_project
+from helpers.config import select_environments, load_yaml
 # Import the lock helpers' generic primitive-copy + create-workflow registration
 # functions directly. They are key-agnostic (each takes a `key` argument), so
 # duplicating them into a queue-specific module would buy nothing. Marked as
@@ -37,7 +38,8 @@ _SAMPLE_TEST = {
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--workspace", default=None)
+    parser.add_argument("--project", "--workspace", dest="workspace", default=None)
+    parser.add_argument("--env", "--register-in", dest="register_in", help="Selected environment(s), comma-separated; implicit only when exactly one exists")
     parser.add_argument("--include-error-handler", action="store_true", dest="include_error_handler")
     parser.add_argument("--with-sample-test", action="store_true", dest="with_sample_test",
                         help="Also copy a paired producer+consumer test that exercises happy / "
@@ -46,7 +48,13 @@ def main() -> None:
     parser.add_argument("--force-overwrite", action="store_true", dest="force_overwrite")
     args = parser.parse_args()
 
-    ws = workspace_root(args.workspace)
+    ws = require_project(args.workspace)
+    try:
+        envs = select_environments(ws, args.register_in)
+        for env in envs:
+            load_yaml(env, ws)
+    except (ValueError, FileNotFoundError) as error:
+        parser.error(str(error))
 
     primitives = dict(_PRIMITIVES)
     if args.include_error_handler:
@@ -66,13 +74,13 @@ def main() -> None:
     failures: list[tuple[str, Exception]] = []
     for key, name in primitives.items():
         try:
-            _register_via_create_workflow(ws, key, name, "Tier 0a: leaves")
+            _register_via_create_workflow(ws, key, name, "Tier 0a: leaves", register_in=",".join(envs))
         except SystemExit as e:
             failures.append((key, e))
             print(f"  WARNING: registration failed for '{key}'; continuing.", file=sys.stderr)
     for key, name in sample_test.items():
         try:
-            _register_via_create_workflow(ws, key, name, "Tier 1")
+            _register_via_create_workflow(ws, key, name, "Tier 1", register_in=",".join(envs))
         except SystemExit as e:
             failures.append((key, e))
             print(f"  WARNING: registration failed for '{key}'; continuing.", file=sys.stderr)

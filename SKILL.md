@@ -9,18 +9,22 @@ This is the entry point. When the user asks anything n8n-related, route to the m
 
 ## Mental model
 
-- The skill package (this directory) is **read-only**. You never edit files here.
-- The user's project state lives in `${PWD}/n8n-evol-I-workspace/` (created by `init.md`).
-- Helpers are Python scripts under `helpers/`. Invoke them with `python3 ${CLAUDE_PLUGIN_ROOT}/helpers/<name>.py [args]` (plugin mode) or `python3 <path-to-harness>/helpers/<name>.py [args]` (skill mode).
-- All helpers default to `--workspace ${PWD}/n8n-evol-I-workspace`. Pass `--workspace <path>` if the user runs from elsewhere.
-- **Agent memory**: read `N8N-WORKSPACE-MEMORY.md` in the workspace at the start of every session; append a dated entry whenever you learn something durable about this project. Full guidance in `AGENTS.md` (also in the workspace root).
+- User preferences first, existing project conventions second, bundled defaults last. See [project configuration](configuration.md) for path mappings, environment storage and command overrides.
+- The installed toolkit is read-only. Resolve it from the skill/plugin location, never from the project's current directory.
+- Project files are reusable source. `n8n-project.yml` maps their paths and one environment workspace per deployment. Helpers find the nearest project from subdirectories; `--workspace <project>` remains an explicit override.
+- Each environment owns its credential bindings, remote workflow IDs, build output, synchronization baseline and execution state. Local n8n and n8n Cloud use the same helpers. Use distinct deployments for separate environments.
+- For a new project use `helpers/init.py --project <path>`; for an existing project add `--adopt` and preserve its instructions, secrets, files and data. `--path KIND=relative/path` maps existing layouts. Setup is additive, including the deprecated `--force` flag.
+- Read existing instructions and `N8N-WORKSPACE-MEMORY.md` if present. Append durable project findings without rewriting history or storing secrets.
+- Select the environment explicitly. Creation must not silently write to every deployment. New-format deploys require `--activate` to publish; legacy projects retain their documented activation default.
+- Use `resync.py --preview` to inspect remote changes. Conflicts stop without overwriting local source. Raw incoming snapshots and deployment baselines are private environment state.
+- Invoke helpers with `"<installed-toolkit>/scripts/python" "<installed-toolkit>/helpers/<name>.py"`. The launcher uses a suitable existing Python or prepares dependencies in the tool cache; no manual virtual environment setup is needed. Where linked skills show `python3`, use this launcher. In Claude plugin mode `<installed-toolkit>` is `${CLAUDE_PLUGIN_ROOT}`; other adapters provide the absolute installation path.
 
 ## Lifecycle skills (use when the user wants to do X)
 
 | Skill | When |
 |---|---|
-| [init.md](skills/init.md) | First-time setup. Creates the workspace at `${PWD}/n8n-evol-I-workspace/`. |
-| [bootstrap-env.md](skills/bootstrap-env.md) | Configure an environment (`dev` / `staging` / `prod`). Creates env YAML + `.env`, validates, mints placeholder workflow IDs. |
+| [init.md](skills/init.md) | Create or safely adopt a project; preserve existing files and map its layout. |
+| [bootstrap-env.md](skills/bootstrap-env.md) | Configure an environment (`dev` / `staging` / `prod`). Validates a deployment, isolates its configuration/secrets/bindings, and mints requested placeholder workflow IDs. |
 | [doctor.md](skills/doctor.md) | Health check. Run before/after major changes. |
 | [create-new-workflow.md](skills/create-new-workflow.md) | Author a brand-new workflow. |
 | [register-workflow-to-error-handler.md](skills/register-workflow-to-error-handler.md) | Wire `settings.errorWorkflow`. |
@@ -31,6 +35,7 @@ This is the entry point. When the user asks anything n8n-related, route to the m
 | [create-queue.md](skills/create-queue.md) | First-time setup for queue primitive (Redis Streams + atomic-INCR semaphore). |
 | [add-queue-publish-to-workflow.md](skills/add-queue-publish-to-workflow.md) | Wrap a workflow with a producer-side XADD call. |
 | [add-queue-consumer-to-workflow.md](skills/add-queue-consumer-to-workflow.md) | Turn a workflow into a schedule-polled queue consumer with bounded concurrency. |
+| [tidyup.md](skills/tidyup.md) | Compatibility alias for canvas layout. |
 | [tidy-workflow.md](skills/tidy-workflow.md) | Apply n8n's canvas-layout algorithm to a workflow template to clean up node positions. |
 | [deploy.md](skills/deploy.md) | Deploy one workflow to one env. |
 | [activate-single-workflow-in-env.md](skills/activate-single-workflow-in-env.md) | Activate after deploy. |
@@ -76,6 +81,7 @@ These are reference docs, not action triggers. Read them while authoring.
 - [skills/integrations/microsoft-365/excel-and-sharepoint.md](skills/integrations/microsoft-365/excel-and-sharepoint.md)
 - [skills/integrations/gmail/sending-email.md](skills/integrations/gmail/sending-email.md)
 - [skills/integrations/redis/lock-pattern.md](skills/integrations/redis/lock-pattern.md)
+- [skills/integrations/redis/queue-pattern.md](skills/integrations/redis/queue-pattern.md)
 - [skills/integrations/sentry/README.md](skills/integrations/sentry/README.md)
 - [skills/integrations/datadog/README.md](skills/integrations/datadog/README.md)
 - [skills/integrations/slack/README.md](skills/integrations/slack/README.md)
@@ -97,4 +103,4 @@ Templates use `{{@type:path}}` (preferred form) or the canonical long form `{{IN
 | `html` | `{{@html:relative/path.html}}` | HTML file |
 | `js` | `{{@js:relative/path.js}}` | JavaScript file |
 | `py` | `{{@py:relative/path.py}}` | Python file (Code-node `language: python`) |
-| `uuid` | `{{@uuid:identifier}}` | Fresh UUID v4 (consistent within one hydration) |
+| `uuid` | `{{@uuid:identifier}}` | Stable UUID for this workflow and environment; distinct across environments |

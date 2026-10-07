@@ -1,8 +1,16 @@
 ---
-description: Hydrate, PUT to n8n, and (default) activate one workflow on one env.
+description: Build current source, check drift and deploy one workflow to an explicitly selected environment.
 ---
 
 # deploy
+
+Path examples use bundled defaults. Resolve source and environment locations from [project configuration](../configuration.md); preserve user preferences and existing conventions.
+
+## Current behavior
+
+New manifest projects build from current source every time. Use `--preview` first and `--activate` when publication is intended; otherwise deployment does not request activation. Existing remote edits stop deployment until resynchronized. The API may publish updates to already-active workflows: deactivate first when a draft-only update is required.
+
+Build/state paths are described in [project configuration](../configuration.md). Deploy saves a private pre-deploy snapshot and synchronization baseline. `--preview` performs local build/API reads but does not mutate the remote workflow.
 
 ## When
 
@@ -11,14 +19,14 @@ Roll one workflow to one env.
 ## How
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/helpers/deploy.py --env <env> --workflow-key <key> [--no-activate] [--rehydrate] [--debug]
+python3 ${CLAUDE_PLUGIN_ROOT}/helpers/deploy.py --env <env> --workflow-key <key> [--preview] [--activate|--no-activate] [--debug]
 ```
 
 ## Side effects
 
-1. Calls `hydrate.py` first (composes; produces `<workspace>/n8n-build/<env>/<key>.generated.json`) if missing or `--rehydrate`.
+1. Builds from current source every time, validates the payload, checks remote drift against its baseline, and writes into the selected environment's build directory. `--rehydrate` is a compatibility no-op.
 2. Reads the generated JSON, drops disallowed PUT fields (active, tags, id, versionId), PUTs to `<base>/api/v1/workflows/<id>`.
-3. By default, activates via `POST /workflows/<id>/activate`. `--no-activate` skips this.
+3. Manifest projects activate only with `--activate` or explicit environment `activation: automatic`. Projects without a manifest retain automatic activation for compatibility. `--no-activate` suppresses the activation request. An already-active target must be deactivated before a draft-only update.
 4. With `--debug`, dumps redacted pre/post artifacts to `~/.cache/n8n-evol-I/debug/<pid>/deploy-<n>.json` (mode 0600).
 
 ## Pattern

@@ -9,6 +9,7 @@ Marker forms:
 import json
 import re
 from pathlib import Path
+from helpers.placeholder.paths import source_file
 
 PATTERN = re.compile(r"\{\{(?:INTERPOLATE_|@)py:([^}]+)\}\}")
 MATCH_OPEN = "# MATCH:py:{path}"
@@ -37,7 +38,7 @@ def resolve(text: str, workspace: Path) -> str:
             raise ValueError(
                 f"Absolute paths in placeholders are forbidden: {{{{@py:{rel_path}}}}}"
             )
-        full = workspace / rel_path
+        full = source_file(workspace, rel_path)
         if not full.exists():
             raise FileNotFoundError(f"Python file not found: {full}")
         content = full.read_text(encoding="utf-8")

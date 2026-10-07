@@ -1,21 +1,21 @@
 ---
 name: pattern-code-node-discipline
-description: Pure-function-plus-glue convention for n8n Code nodes — extract logic to n8n-functions/, inject via {{@js|py:...}}, pair with a test. Validator hard-fails otherwise.
+description: Externalized Code-node logic with project-selected tests and module conventions; bundled pure-function defaults remain available.
 user-invocable: false
 ---
 
 # Pattern: Code-node discipline
 
-n8n Code-node logic must be extracted to a pure function under `n8n-functions/{js,py}/<name>.{js,py}` and paired with a test under `n8n-functions-tests/`. The Code-node body keeps only the placeholder + thin n8n glue (`$input` / `items` / `return [{json:...}]`).
+Keep Code-node logic in source files, referenced by placeholders. The bundled default uses pure functions under `n8n-functions/{js,py}/` and paired tests under `n8n-functions-tests/`; configured paths and the project test contract take precedence. The Code-node body keeps only the placeholder + thin n8n glue (`$input` / `items` / `return [{json:...}]`).
 
-`validate.py` enforces this for any `n8n-nodes-base.code` node in a template. Inlined Code-node logic is rejected. The deprecated `n8n-nodes-base.function` node type is forbidden entirely.
+`validate.py` checks source existence and placeholders for any `n8n-nodes-base.code` node in a template. Without a configured or detected project test runner, it also enforces the bundled purity, CommonJS trailer and paired-test conventions. Inlined Code-node logic is rejected. The deprecated `n8n-nodes-base.function` node type is forbidden entirely.
 
 ## Why
 
 - **Testable**: the pure function takes plain values and returns plain values, so `node --test` (JS) or `pytest` (Py) can exercise it without an n8n runtime.
 - **Re-usable**: the same function file can be referenced from multiple workflows.
 - **Reviewable**: diffs show real logic changes, not whitespace inside JSON-escaped strings.
-- **Round-trippable**: `js_resolver` / `py_resolver` wrap the injected content in round-trip markers (`#:js:` for JS, `MATCH:py:` for Python; legacy `DEHYDRATE:` markers also accepted on read); `resync.py` collapses those markers back to placeholders so live edits in n8n's UI never leak duplicated function bodies into templates.
+- **Round-trippable**: `js_resolver` / `py_resolver` wrap the injected content in round-trip markers (`#:js:` for JS, `MATCH:py:` for Python; legacy `DEHYDRATE:` markers also accepted on read); `resync.py` collapses those markers back to placeholders so accepted UI edits update the external source file while templates keep their placeholders. Concurrent edits stop for conflict resolution.
 
 ## Layout
 
@@ -35,13 +35,13 @@ Naming:
 - **JS**: `camelCase` for the function name, file matches: `calculateStatsByCategory.js` ↔ `calculateStatsByCategory.test.js`.
 - **Python**: `snake_case` for the function name, file matches: `calculate_stats_by_category.py` ↔ `test_calculate_stats_by_category.py`.
 
-Test files are required and the validator errors if missing. The directory names `n8n-functions/` and `n8n-functions-tests/` are convention, not configurable.
+The bundled convention requires paired test files. Map `paths.functions` and `paths.function_tests` in `n8n-project.yml` for an existing layout. `commands.test.n8n` or an existing project runner owns its own test naming and module rules; see [project configuration](../../configuration.md).
 
 ### Path resolution
 
 `{{@js:...}}`, `{{@py:...}}`, `{{@txt:...}}`, `{{@md:...}}`, `{{@json:...}}`, `{{@html:...}}` placeholder paths are **relative to the workspace root** (the directory containing `n8n-config/`, `n8n-functions/`, `cloud-functions/`, …). They are NOT relative to a default `n8n-functions/js/` prefix.
 
-So `{{@js:n8n-functions/js/aggregate.js}}` resolves to `<workspace>/n8n-functions/js/aggregate.js`. Writing `{{@js:aggregate.js}}` would look for `<workspace>/aggregate.js` — usually a mistake. The validator's `referenced file not found` error reports the full resolved path, so always include the `n8n-functions/js/` (or `n8n-functions/py/`, `n8n-prompts/`, etc.) prefix.
+So `{{@js:n8n-functions/js/aggregate.js}}` resolves to `<workspace>/n8n-functions/js/aggregate.js`. Writing `{{@js:aggregate.js}}` would look for `<workspace>/aggregate.js` — usually a mistake. The validator's `referenced file not found` error reports the full resolved path, so include the actual project-relative source path, using the configured layout.
 
 ---
 
@@ -65,7 +65,7 @@ The `if (typeof module !== "undefined")` trailer:
 - **No-op in n8n's vm sandbox** — `module` is undefined, the condition is false, the line is skipped.
 - **Active under `node --test`** — `module` is defined, the function is exported, the test can `require` it.
 
-The trailer is **mandatory**. The validator errors if it's missing.
+The trailer is required only by the bundled CommonJS test convention. A project-selected runner may use another module/test contract. Ensure the embedded source remains executable by the selected n8n Code-node runtime; hydration does not transpile ESM or TypeScript.
 
 ### Code-node body (before hydrate)
 
@@ -126,7 +126,7 @@ test("groups articles by category", () => {
 });
 ```
 
-Pure CommonJS (`require` throughout). Don't add `package.json` `"type": "module"` — `node --test` runs these as CJS scripts.
+This example uses CommonJS. Preserve an existing project's module convention and test runner instead of changing its `package.json` to match this example.
 
 ---
 
@@ -188,7 +188,7 @@ def test_groups_by_category():
     assert result == {"sports": 2, "tech": 1}
 ```
 
-No `sys.path` manipulation here — `init.py` scaffolds `n8n-functions-tests/conftest.py` once with:
+For a fresh default project, `init.py` can scaffold the convenience imports below. Adoption and existing runner configurations keep their own setup:
 
 ```python
 import sys
@@ -204,7 +204,7 @@ The Python source file must **not** contain any of the substrings `# MATCH:py:`,
 
 ## Structure rules
 
-Function files must contain only function declarations + (JS only) the conditional export trailer. Top-level code is rejected at validate time.
+Under the bundled default contract, function files contain function declarations plus the conditional JS export trailer. These style checks yield to a configured or detected project test contract.
 
 **JavaScript** — at brace-depth 0, the only allowed line shapes are:
 - Blank lines.
@@ -238,7 +238,7 @@ The structural check makes "pure functions only" enforceable, not aspirational. 
 
 ## Validator checks (template only)
 
-`validate.py` runs these against every `n8n-nodes-base.code` node in a template. All checks are **errors**, no warnings. Built JSON skips these checks (placeholders are already replaced post-hydrate).
+`validate.py` checks Code-node structure and source references in templates. The trailer, purity and paired-filename rows below apply only to the bundled test contract. Failures are errors. Built JSON skips placeholder/source-style checks because hydration has already replaced placeholders.
 
 | Rule | Error |
 |---|---|
@@ -250,7 +250,7 @@ The structural check makes "pure functions only" enforceable, not aspirational. 
 | Function file contains top-level code outside function declarations | The file must be a pure-function library; n8n-glue belongs in the Code-node body. See **Structure rules** above. |
 | No paired test file at `n8n-functions-tests/<stem>.test.js` (JS) or `test_<stem>.py` (Py) | Pure function ships untested. |
 
-There is **no opt-out** for trivial Code nodes.
+Keep source externalization even for small Code nodes. Customize the test/module contract through project configuration, rather than marking user code as a bundled primitive.
 
 ## Running the tests
 
@@ -258,9 +258,9 @@ There is **no opt-out** for trivial Code nodes.
 python3 ${CLAUDE_PLUGIN_ROOT}/helpers/test_functions.py --target n8n
 ```
 
-Runs both `node --test` (over `*.test.js`) and `pytest` (over `test_*.py`) under `n8n-functions-tests/`.
+Runs `commands.test.n8n` first, otherwise an existing project runner. With neither configured, runs `node --test` over `*.test.js` and pytest over `test_*.py` in the configured function-test directory.
 
-`pytest` must be available — `pip install pytest` if it isn't. The runner reports the failure cleanly via subprocess exit code.
+For the bundled Python test path, pytest must be installed in the project's chosen environment. The runner reports the failure cleanly via subprocess exit code.
 
 ---
 
@@ -268,6 +268,6 @@ Runs both `node --test` (over `*.test.js`) and `pytest` (over `test_*.py`) under
 
 Harness-maintained primitive Code nodes (lock acquisition, lock release, rate-limit check, error-handler cleanup) begin their body with `// @n8n-evol-I:primitive`. This marker suppresses the placeholder and purity checks in `validate.py` — the validator's `_validate_code_node` short-circuits with no errors as soon as it sees the marker as the first non-whitespace characters of the code field.
 
-Only primitives under `primitives/workflows/` should use this marker. User Code nodes must follow the discipline rule without exception; using the marker in a user workflow will silently bypass validation, defeating the whole point of the rule.
+Only primitives under `primitives/workflows/` should use this marker. User Code nodes must follow their project's source and testing contract; using the marker in a user workflow will silently bypass validation, defeating the whole point of the rule.
 
 The marker exists because the primitive bodies legitimately use `this.helpers.redis` and have top-level statements (SETNX with TTL, INCR + EXPIRE, owner-pointer writes) — they're not pure functions and can't be written as such without losing atomicity. The marker is the explicit, narrow opt-out for this case.

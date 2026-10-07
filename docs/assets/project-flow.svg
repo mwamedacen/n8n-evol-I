@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1060" viewBox="0 0 800 1060" role="img" aria-labelledby="title desc">
+<title id="title">n8n evol I — Small source files become composed n8n workflows</title>
+<desc id="desc">A coding agent follows shipped skills to load and edit relevant workflow templates, code, prompts and schemas, and reuse error-handling, rate-limit, lock and queue primitives. Shared YAML and selected environment configuration feed build-time interpolation of files and environment-specific IDs. An illustrative dependency graph shows a main workflow calling two sub-workflows that share a primitive. Call arrows run from callers to callees; numbered badges indicate dependency-first deployment: primitive, sub-workflows, main workflow. Activation follows explicit selection or recorded policy. The target is local n8n or n8n Cloud. Review and resync return accepted remote edits to source.</desc>
+<defs>
+  <marker id="flow-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M1 1 L9 5 L1 9Z" fill="#2864C5"/></marker>
+  <marker id="call-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M1 1 L9 5 L1 9Z" fill="#526B84"/></marker>
+  <marker id="resync-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M1 1 L9 5 L1 9Z" fill="#187865"/></marker>
+  <style>
+    text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;fill:#17324D}
+    .heading{font-size:32px;font-weight:700;letter-spacing:-.6px}
+    .section{font-size:25px;font-weight:700;letter-spacing:-.3px}
+    .label{font-size:21px;font-weight:650}
+    .body{font-size:20px}
+    .note{font-size:19px;fill:#425D76}
+    .mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:20px}
+    .blue{fill:#2864C5}.teal{fill:#187865}
+    .flow{fill:none;stroke:#2864C5;stroke-width:3;marker-end:url(#flow-arrow)}
+    .call{fill:none;stroke:#526B84;stroke-width:2.5;marker-end:url(#call-arrow)}
+    .ref{fill:none;stroke:#A1B7CD;stroke-width:2}
+    .return{fill:none;stroke:#187865;stroke-width:2;stroke-dasharray:6 6;marker-end:url(#resync-arrow)}
+    .badge{fill:#fff;stroke:#187865;stroke-width:2}
+    .number{font-size:20px;font-weight:700;fill:#187865;text-anchor:middle}
+  </style>
+</defs>
+<rect width="800" height="1060" rx="16" fill="#FFFFFF"/>
+<text x="32" y="49" class="heading">n8n evol I</text>
+<text x="32" y="80" class="body">From agent-friendly source to executable n8n workflows.</text>
+
+<!-- One guided authoring relationship, not two unrelated cards. -->
+<rect x="32" y="109" width="720" height="108" rx="12" fill="#EDF4FC"/>
+<path d="M59 140 L47 151 L59 162 M81 140 L93 151 L81 162 M76 136 L64 166" fill="none" stroke="#2864C5" stroke-width="2.5" stroke-linecap="round"/>
+<text x="112" y="151" class="section">Coding agent</text>
+<text x="112" y="184" class="note">Loads relevant files</text>
+<path d="M391 157 H333" class="flow"/>
+<text x="413" y="151" class="section">Shipped skills</text>
+<text x="413" y="184" class="note">Guide editing + primitive reuse</text>
+<path d="M203 217 V258" class="flow"/>
+<text x="222" y="244" class="note blue">edit + compose</text>
+
+<!-- Compact editable source: a template refers to external files. -->
+<rect x="32" y="260" width="720" height="269" rx="12" fill="#F5F7FA" stroke="#D9E2EC"/>
+<text x="56" y="296" class="section">Compact project source</text>
+<path d="M482 313 V493" stroke="#D9E2EC"/>
+<rect x="56" y="322" width="394" height="85" rx="8" fill="#FFFFFF" stroke="#A1B7CD"/>
+<path d="M78 343 H94 M78 354 H106 M78 365 H99 M78 376 H109" stroke="#2864C5" stroke-width="3" stroke-linecap="round"/>
+<text x="126" y="357" class="mono">*.template.json</text>
+<text x="126" y="386" class="note">References external files</text>
+<path d="M253 407 V427 M117 444 V427 H388 V444 M253 427 V444" class="ref"/>
+<rect x="56" y="444" width="122" height="42" rx="6" fill="#FFFFFF" stroke="#A1B7CD"/>
+<rect x="192" y="444" width="122" height="42" rx="6" fill="#FFFFFF" stroke="#A1B7CD"/>
+<rect x="328" y="444" width="122" height="42" rx="6" fill="#FFFFFF" stroke="#A1B7CD"/>
+<text x="117" y="471" text-anchor="middle" class="body">Code</text>
+<text x="253" y="471" text-anchor="middle" class="body">Prompts</text>
+<text x="389" y="471" text-anchor="middle" class="body">Schemas</text>
+<text x="56" y="512" class="note">Reusable across environments</text>
+<text x="507" y="338" class="label">Reusable primitives</text>
+<path d="M507 361 H723" stroke="#CBD7E3"/>
+<text x="507" y="390" class="body">Error handling</text>
+<text x="507" y="421" class="body">Rate limits</text>
+<text x="507" y="452" class="body">Locks + queues</text>
+<text x="507" y="483" class="note">Copy, extend, compose</text>
+<path d="M507 500 H477 V363 H452" class="flow"/>
+<path d="M536 529 V571" class="flow"/>
+
+<!-- Configuration is an input to build, not the main story. -->
+<text x="40" y="606" class="label">YAML configuration</text>
+<text x="40" y="636" class="note">Shared + environment</text>
+<path d="M267 617 H308" class="flow"/>
+<rect x="311" y="574" width="441" height="90" rx="10" fill="#EDF4FC"/>
+<text x="334" y="610" class="section">Build-time interpolation</text>
+<text x="334" y="640" class="note">Inline files + bind environment IDs</text>
+<path d="M536 664 V706" class="flow"/>
+
+<!-- Calls point right. Number badges show the inverse rollout order. -->
+<rect x="32" y="706" width="720" height="212" rx="12" fill="#FFFFFF" stroke="#D9E2EC"/>
+<text x="56" y="739" class="section">Composed workflow graph</text>
+<text x="56" y="766" class="note">Calls connect reusable workflows</text>
+<path d="M228 838 C254 838 251 803 291 803" class="call"/>
+<path d="M228 838 C254 838 251 883 291 883" class="call"/>
+<path d="M479 803 C520 803 519 838 559 838" class="call"/>
+<path d="M479 883 C520 883 519 838 559 838" class="call"/>
+<rect x="56" y="811" width="172" height="54" rx="8" fill="#17324D"/>
+<text x="142" y="845" text-anchor="middle" class="body" style="fill:#FFFFFF">Main workflow</text>
+<rect x="292" y="776" width="187" height="54" rx="8" fill="#EDF4FC" stroke="#A1B7CD"/>
+<text x="385" y="810" text-anchor="middle" class="body">Sub-workflow</text>
+<rect x="292" y="856" width="187" height="54" rx="8" fill="#EDF4FC" stroke="#A1B7CD"/>
+<text x="385" y="890" text-anchor="middle" class="body">Sub-workflow</text>
+<rect x="560" y="811" width="168" height="54" rx="8" fill="#EAF5F1" stroke="#7FB7A9"/>
+<text x="644" y="834" text-anchor="middle" class="note" style="fill:#17324D">Shared</text>
+<text x="644" y="856" text-anchor="middle" class="body">primitive</text>
+<circle cx="211" cy="809" r="15" class="badge"/><text x="211" y="816" class="number">3</text>
+<circle cx="462" cy="774" r="15" class="badge"/><text x="462" y="781" class="number">2</text>
+<circle cx="462" cy="854" r="15" class="badge"/><text x="462" y="861" class="number">2</text>
+<circle cx="711" cy="809" r="15" class="badge"/><text x="711" y="816" class="number">1</text>
+
+<path d="M656 918 V949" class="flow"/>
+<text x="32" y="939" class="label teal">Deploy dependencies first: 1 → 2 → 3</text>
+<rect x="32" y="951" width="720" height="82" rx="10" fill="#EAF5F1"/>
+<text x="55" y="984" class="section">Local n8n or n8n Cloud</text>
+<text x="55" y="1014" class="note">Activate by explicit selection or recorded policy</text>
+
+<!-- A modest feedback path returns reviewed changes to editable source. -->
+<path d="M752 991 H778 V284 H754" class="return"/>
+<text x="754" y="682" transform="rotate(-90 754 682)" class="note teal">Review + resync</text>
+</svg>

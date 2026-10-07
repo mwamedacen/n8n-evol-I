@@ -8,7 +8,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from helpers.workspace import workspace_root, harness_root
+from helpers.workspace import require_project, harness_root, workspace_path
+from helpers.config import select_environments, load_yaml
 
 
 _PRIMITIVES = {
@@ -23,9 +24,8 @@ def _copy_primitive(workspace: Path, key: str, force_overwrite: bool = False) ->
     src = harness_root() / "primitives" / "workflows" / f"{key}.template.json"
     if not src.exists():
         raise FileNotFoundError(f"Primitive missing: {src}")
-    dst_dir = workspace / "n8n-workflows-template"
-    dst_dir.mkdir(parents=True, exist_ok=True)
-    dst = dst_dir / f"{key}.template.json"
+    dst = workspace_path(workspace, "templates", f"{key}.template.json")
+    dst.parent.mkdir(parents=True, exist_ok=True)
     if dst.exists() and not force_overwrite:
         print(
             f"  WARNING: {key}.template.json already exists — re-run with "
@@ -39,7 +39,7 @@ def _copy_primitive(workspace: Path, key: str, force_overwrite: bool = False) ->
     return dst
 
 
-def _register_via_create_workflow(workspace: Path, key: str, name: str, tier: str) -> None:
+def _register_via_create_workflow(workspace: Path, key: str, name: str, tier: str, register_in: str | None = None) -> None:
     """Register the workflow in env YAMLs (and mint placeholder IDs) without re-writing the template."""
     cmd = [
         sys.executable,
@@ -50,6 +50,8 @@ def _register_via_create_workflow(workspace: Path, key: str, name: str, tier: st
         "--no-template",
         "--tier", tier,
     ]
+    if register_in:
+        cmd.extend(["--register-in", register_in])
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode != 0:
         print(r.stdout, file=sys.stderr)
@@ -60,13 +62,20 @@ def _register_via_create_workflow(workspace: Path, key: str, name: str, tier: st
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--workspace", default=None)
+    parser.add_argument("--project", "--workspace", dest="workspace", default=None)
+    parser.add_argument("--env", "--register-in", dest="register_in", help="Selected environment(s), comma-separated; implicit only when exactly one exists")
     parser.add_argument("--include-error-handler", action="store_true", dest="include_error_handler")
     parser.add_argument("--include-rate-limit", action="store_true", dest="include_rate_limit")
     parser.add_argument("--force-overwrite", action="store_true", dest="force_overwrite")
     args = parser.parse_args()
 
-    ws = workspace_root(args.workspace)
+    ws = require_project(args.workspace)
+    try:
+        envs = select_environments(ws, args.register_in)
+        for env in envs:
+            load_yaml(env, ws)
+    except (ValueError, FileNotFoundError) as error:
+        parser.error(str(error))
 
     primitives = dict(_PRIMITIVES)
     if args.include_error_handler:
@@ -86,7 +95,7 @@ def main() -> None:
     failures: list[tuple[str, Exception]] = []
     for key, name in primitives.items():
         try:
-            _register_via_create_workflow(ws, key, name, "Tier 0a: leaves")
+            _register_via_create_workflow(ws, key, name, "Tier 0a: leaves", register_in=",".join(envs))
         except SystemExit as e:
             failures.append((key, e))
             print(f"  WARNING: registration failed for '{key}'; continuing.", file=sys.stderr)

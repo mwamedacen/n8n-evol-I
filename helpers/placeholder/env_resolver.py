@@ -25,7 +25,6 @@ def _is_sentinel(val: str) -> bool:
 def resolve(text: str, env_name: str, workspace: Path) -> str:
     """Replace all {{INTERPOLATE_env:...}} / {{@env:...}} tokens in text with config values."""
     data = load_yaml(env_name, workspace)
-    load_env(env_name, workspace)
 
     def _replace(match: re.Match) -> str:
         dot_path = match.group(1)
@@ -48,6 +47,6 @@ def resolve(text: str, env_name: str, workspace: Path) -> str:
                 f"Sentinel value '{sval}' resolved for {{{{@env:{dot_path}}}}} in {env_name}.yml. "
                 f"Run `python3 <harness>/helpers/bootstrap_env.py --env {env_name}` to mint real IDs."
             )
-        return sval
+        return json.dumps(sval)[1:-1]
 
     return PATTERN.sub(_replace, text)

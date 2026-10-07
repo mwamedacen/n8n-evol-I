@@ -6,6 +6,8 @@ user-invocable: false
 
 # create-queue
 
+Path examples use bundled defaults. Resolve source and environment locations from [project configuration](../configuration.md); preserve user preferences and existing conventions.
+
 ## When
 
 When locking is too coarse: the work shouldn't serialise — it should be queued, drained by N concurrent consumers, retried on failure, and optionally routed to a dead-letter stream after `max_retries`.
@@ -15,11 +17,13 @@ Use `create-lock` for **coordination** (one-at-a-time access to a shared resourc
 ## How
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/helpers/create_queue.py \
+python3 ${CLAUDE_PLUGIN_ROOT}/helpers/create_queue.py --env <env> \
   [--include-error-handler] \
   [--with-sample-test] \
   [--force-overwrite]
 ```
+
+Omit `--env` only when exactly one environment exists. `--register-in dev,staging` explicitly selects several deployments. Ambiguous or missing environment selection stops before copying primitives. Existing templates are preserved unless `--force-overwrite` is explicitly requested.
 
 ## Side effects
 
@@ -28,7 +32,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/helpers/create_queue.py \
   - `queue_pop.template.json` (always)
   - `queue_ack.template.json` (always)
   - `error_handler_queue_cleanup.template.json` (with `--include-error-handler`)
-- Registers each in every configured env's YAML (delegates to `create_workflow.py --no-template`). This mints placeholder workflow IDs that callers reference via `{{@env:workflows.queue_publish.id}}` etc.
+- Registers each in the selected environment's bindings (delegates to `create_workflow.py --no-template --register-in <env>`). This mints placeholder workflow IDs that callers reference via `{{@env:workflows.queue_publish.id}}` etc.
 - Adds them to `deployment_order.yml` under "Tier 0a: leaves" so they deploy before any caller workflow that depends on them.
 
 ## What you're actually deploying
@@ -48,7 +52,7 @@ The queue primitives need **two** things provisioned in n8n before deploy:
 
 ### 1. Credential — `credentials.redis_rest`
 
-An `httpHeaderAuth`-typed credential carrying `Authorization: Bearer <UPSTASH_REDIS_REST_TOKEN>`, registered in every env YAML. The existing `credentials.redis` (TCP redis@1) is left untouched and continues to back the lock + rate-limit primitives.
+An `httpHeaderAuth`-typed credential carrying `Authorization: Bearer <UPSTASH_REDIS_REST_TOKEN>`, registered in each explicitly selected environment. The existing `credentials.redis` (TCP redis@1) is left untouched and continues to back the lock + rate-limit primitives.
 
 Mint it via [`manage-credentials.md`](manage-credentials.md) Path A, sourcing the token from `.env.<env>` (`UPSTASH_REDIS_REST_TOKEN`).
 
@@ -63,7 +67,7 @@ Every queue primitive's HTTP Request URL field references **`={{ $env.UPSTASH_RE
 For active error-handler cleanup to work, every static stream name used by your consumers must be registered in `<env>.yml.queueScopes`. `add-queue-publish-to-workflow` and `add-queue-consumer-to-workflow` auto-append static literal streams (`={{ "foo" }}`-form) here on each invocation; dynamic streams (`={{ "stream-" + $json.x }}`) require manual maintenance.
 
 ```yaml
-# n8n-config/dev.yml
+# environments/dev/workspace.yml (legacy: n8n-config/dev.yml)
 queueScopes:
   - orders
   - notifications

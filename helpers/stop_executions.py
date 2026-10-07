@@ -86,6 +86,8 @@ def main() -> None:
     args = parser.parse_args()
 
     ws = workspace_root(args.workspace)
+    from helpers.workspace import ensure_workspace
+    ensure_workspace(ws)
     yaml_data = load_yaml(args.env, ws)
     load_env(args.env, ws)
     client = ensure_client(args.env, ws)

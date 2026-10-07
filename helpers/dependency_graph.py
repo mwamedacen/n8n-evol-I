@@ -21,18 +21,18 @@ from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from helpers.workspace import workspace_root
+from helpers.workspace import workspace_root, workspace_path, build_path
 from helpers.config import load_yaml, load_env, load_common
 from helpers.n8n_client import ensure_client
 
 
-_PLACEHOLDER_RE = re.compile(r"^\{\{(?:INTERPOLATE_|@)env:workflows\.([A-Za-z0-9_\-]+)\.id\}\}$")
+_PLACEHOLDER_RE = re.compile(r"^\{\{(?:INTERPOLATE_|@)env:workflows\.([A-Za-z0-9_/\-]+)\.id\}\}$")
 
 
 def _read_templates(workspace: Path) -> dict[str, dict]:
     """Return {workflow_key: parsed_template_dict}."""
     out: dict[str, dict] = {}
-    template_dir = workspace / "n8n-workflows-template"
+    template_dir = workspace_path(workspace, "templates")
     if not template_dir.is_dir():
         return out
     for path in sorted(template_dir.glob("*.template.json")):
@@ -214,6 +214,8 @@ def main() -> None:
     args = parser.parse_args()
 
     ws = workspace_root(args.workspace)
+    from helpers.workspace import ensure_workspace
+    ensure_workspace(ws)
     graph = build_graph(args.env, ws, args.source, args.workflow_key)
 
     if args.json:

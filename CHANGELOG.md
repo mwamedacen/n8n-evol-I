@@ -1,5 +1,17 @@
 # Changelog
 
+## v3.0.0 — Project and environment boundaries (unreleased)
+
+- Additive new-project setup and adoption, configurable source paths, upward discovery, and preserved existing instructions/data.
+- One local workspace per distinct n8n deployment; private credential/ID bindings, state, builds, safe migration and explicit target rebinding.
+- Fresh deployment builds, remote drift checks, stable per-environment node identities, conflict-aware resync with source extraction and operation receipts.
+- Configurable test/scaffold commands; read-only installed tooling and separate SDK cache.
+- Native Claude Code, Codex and Hermes plugin installation; first-use Python dependency setup in a separate tool cache.
+- Short onboarding and an explanatory architecture visual; every existing skill/helper/primitive retained.
+- Intentional behavior changes: `init --force` never deletes; multi-environment creation requires selection; new-format deployment requires explicit activation; missing environment credentials fail closed.
+
+See [migration](docs/migration.md) and [actual live verification](docs/testing.md) before upgrading a project.
+
 ## v2.0.0 — Placeholder syntax change + queue primitive
 
 ### Breaking

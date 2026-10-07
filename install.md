@@ -1,106 +1,59 @@
----
-name: install
-description: How to install n8n-evol-I as a skill package and what it expects on the host system.
----
+# Install
 
-# install
+Install through your agent's plugin manager, then ask it to create a new n8n project or adopt an existing one. You need Git and Python 3.11+; helper dependencies are prepared automatically in a machine cache. Node.js is optional for JavaScript tests and SDK layout. [Tested runtimes and targets](docs/testing.md)
 
-## Prerequisites
+## Claude Code
 
-- Python ≥ 3.11 on PATH
-- Pip-installable: `pyyaml`, `requests`, `python-dotenv`
-- An n8n instance the agent can reach via REST + an API key with workflow + credential scopes
+Run inside Claude Code:
 
-## Install (one-time)
+```text
+/plugin marketplace add mwamedacen/n8n-evol-I
+/plugin install n8n-evol-I@n8n-evol
+```
 
-### Skill mode (any agent runtime)
+Restart Claude Code. The plugin exposes an n8n router, ten `/n8n-evol-I:<name>` commands (`deploy`, `deploy_all`, `resync`, `resync_all`, `tidyup`, `debug`, `run`, `doctor`, `validate`, `test`) and the canvas-tidy hook.
 
-Clone into your agent's skills directory:
+## Codex
 
 ```bash
-cd ~/.claude/skills   # or wherever your agent runtime reads skills from
-git clone https://github.com/mwamedacen/n8n-evol-I.git
+codex plugin marketplace add mwamedacen/n8n-evol-I
+codex plugin add n8n-evol-I@n8n-evol
 ```
 
-Install Python deps:
+Start a new Codex session and use the n8n skill. This repository supplies its own marketplace; it is not an official marketplace listing.
+
+## Hermes
 
 ```bash
-pip install pyyaml requests python-dotenv
+hermes plugins install mwamedacen/n8n-evol-I --enable
 ```
 
-(Optional, only if you'll use `iterate-prompt`:)
+Review the installer's trust prompt, then start a new Hermes session. The plugin registers `n8n-evol-I:n8n` and a short routing hint. It runs helpers in the toolkit's own cached Python environment, without adding toolkit dependencies to Hermes' environment.
+
+## First project
+
+Ask your agent: “Use the n8n skill to create `./my-project`” or “Adopt this existing project and preserve its files and conventions.” Connect each environment to its own local or Cloud n8n deployment. Enter its API key through the helper's hidden prompt; CI can pipe a secret manager's output to `--api-key-stdin`. Keep keys out of command arguments, chat and Git. [Environment setup](docs/environments.md) · [Adoption and migration](docs/migration.md)
+
+## Local checkout and other agents
+
+For an unpublished checkout, Claude Code supports `claude --plugin-dir /absolute/path/to/n8n-evol-I`; Codex accepts that path instead of the repository name in `plugin marketplace add`. Hermes installs Git repositories, including a local `file://` Git URL. These native flows were checked with isolated runtime profiles; remote installation requires the changes to be published.
+
+Other agents can read the toolkit's root `SKILL.md`:
 
 ```bash
-pip install dspy litellm
+git clone https://github.com/mwamedacen/n8n-evol-I.git ~/.local/share/n8n-evol-I
+TOOLKIT=~/.local/share/n8n-evol-I
+"$TOOLKIT/scripts/python" "$TOOLKIT/helpers/init.py" --project ./my-project
 ```
 
-### Plugin mode (Claude Code only)
+Use the same launcher for other helpers. It reuses a compatible interpreter or creates a dependency environment in the machine cache; it does not write into the toolkit or project. `N8N_EVOL_PYTHON` selects an already prepared Python interpreter; `N8N_EVOL_CACHE_HOME` selects the cache directory. Manual venv installation with `python -m pip install /path/to/toolkit` remains supported.
 
-CLI form (run in your terminal):
+Native installation and the shell launcher were verified on macOS. The launcher requires a POSIX shell and `python3`; native Windows installation is unverified.
 
-```bash
-claude plugin install https://github.com/mwamedacen/n8n-evol-I
-```
+The runtime-neutral `build-skill-dist.sh` output keeps the root skill, all original supporting skills, helpers and primitives. Native plugin metadata and hooks are excluded; use the checkout for native plugin installation. User instructions take priority, then existing project conventions, then bundled defaults.
 
-In-session form (inside a Claude Code session):
+## Optional capabilities and updates
 
-```
-/plugin install https://github.com/mwamedacen/n8n-evol-I
-```
+DSPy optimization requires its optional dependencies and a chosen model/provider. JavaScript tests use the project's runner or the bundled Node convention. SDK layout uses a machine cache with a Python fallback. Functions can use the Python/FastAPI preset or a custom scaffold and host.
 
-Local dev (loads from a local checkout):
-
-```bash
-claude --plugin-dir ./n8n-evol-I
-```
-
-#### Plugin extras
-
-When installed as a plugin, n8n-evol-I ships two additional behaviors:
-
-- **Slash commands** — 10 user-facing commands available as `/n8n-evol-I:deploy`, `/n8n-evol-I:tidyup`, etc. Hidden lifecycle skills remain agent-loadable via `SKILL.md` routing but do not appear in `/help`.
-
-- **Auto-tidy hook** — a `PostToolUse` hook fires after every Write/Edit/MultiEdit tool call; the hook script filters to `*.template.json` files and runs `tidy_workflow.py --in-place` on matching files. This keeps node positions clean without any manual step.
-
-  The hook runs asynchronously (`async: true`), so Claude Code does not wait for it before continuing. If the agent reads the template file immediately after writing it (e.g. to feed it into a deploy step), it may observe the un-tidied version. In that case, run `tidy-workflow` manually before deploying, or add a short pause between the write and the read.
-
-  To disable the auto-tidy hook: remove or rename `hooks/hooks.json` in the plugin directory, or disable the plugin in Claude Code settings. Standalone-skill-mode users who want auto-tidy can configure the hook manually in `~/.claude/settings.json`.
-
-## What the harness expects on disk
-
-The skill package is a directory containing:
-
-- `SKILL.md` — entry point
-- `skills/*.md` and `skills/{patterns,integrations}/...md` — sub-skills
-- `helpers/*.py` — the executable surface
-- `primitives/` — seed templates copied into workspaces on demand
-
-Helpers are invoked by absolute path (no console script, no PATH pollution):
-
-```bash
-python3 <harness>/helpers/<name>.py [args]
-```
-
-## Per-project setup
-
-Per project, the agent runs `init.md` once to scaffold a workspace at `${PWD}/n8n-evol-I-workspace/`. From there, `bootstrap-env.md` configures envs, `create-new-workflow.md` authors workflows, etc. See [`SKILL.md`](SKILL.md) for the full skill catalogue.
-
-## Updating
-
-The harness's "version" is its git SHA. To upgrade:
-
-```bash
-cd ~/.claude/skills/n8n-evol-I
-git pull
-```
-
-Breaking changes between versions are documented in [`CHANGELOG.md`](CHANGELOG.md). For the migration from the legacy single-repo shape (pre-`d6848fd`), see [`docs/migration-from-d6848fd.md`](docs/migration-from-d6848fd.md).
-
-## Verifying the install
-
-```bash
-python3 <harness>/helpers/init.py --workspace /tmp/n8n-evol-I-smoke
-ls /tmp/n8n-evol-I-smoke/n8n-config /tmp/n8n-evol-I-smoke/n8n-workflows-template
-```
-
-If both directories exist after the run, the install is good.
+Update through your plugin manager, or update a manual checkout. Tool updates do not migrate project data. Back up environment state, review migration notes, run doctor and a relevant live smoke test before updating production.

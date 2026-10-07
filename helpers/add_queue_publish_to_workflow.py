@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from helpers.workspace import workspace_root
+from helpers.workspace import workspace_root, workspace_path
 # Reuse the lock helper's expression normaliser, static-scope extractor, and
 # Execute Workflow node factory — they're key-agnostic. See note in
 # create_queue.py about the future shared-helper extraction.
@@ -22,7 +22,7 @@ _PUBLISH_NODE_NAME = "Queue Publish"
 _DEFAULT_INSERTION_POINT = "auto"  # = after-trigger
 
 
-def _auto_register_queue_scopes(workspace: Path, scope_expr: str) -> None:
+def _auto_register_queue_scopes(workspace: Path, scope_expr: str, envs: list[str] | None = None) -> None:
     """Append the static literal stream name to every <env>.yml.queueScopes (idempotent).
 
     Parallel implementation of `_auto_register_lock_scopes` in
@@ -39,25 +39,18 @@ def _auto_register_queue_scopes(workspace: Path, scope_expr: str) -> None:
             file=sys.stderr,
         )
         return
-    config_dir = workspace / "n8n-config"
-    if not config_dir.is_dir():
-        return
-    import yaml as _yaml
-    for yml in sorted(config_dir.glob("*.yml")):
-        if yml.stem in ("common", "deployment_order"):
-            continue
-        try:
-            data = _yaml.safe_load(yml.read_text()) or {}
-        except Exception:
-            continue
+    from helpers.config import select_environments, load_yaml, save_yaml
+    for env_name in (envs if envs is not None else select_environments(workspace)):
+        data = load_yaml(env_name, workspace, validate=False)
         scopes = data.setdefault("queueScopes", [])
         if not isinstance(scopes, list):
             scopes = []
             data["queueScopes"] = scopes
         if static not in scopes:
             scopes.append(static)
-            yml.write_text(_yaml.dump(data, default_flow_style=False, sort_keys=False))
-            print(f"  Registered queueScopes += {static!r} in {yml.name}")
+            save_yaml(env_name, workspace, data, validate=False)
+            print(f"  Registered queueScopes += {static!r} in {env_name}")
+
 
 
 def _detect_trigger(nodes: list, connections: dict) -> dict:
@@ -270,7 +263,8 @@ def _insert_publish(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--workspace", default=None)
+    parser.add_argument("--workspace", "--project", dest="workspace", default=None)
+    parser.add_argument("--env", "--register-in", dest="register_in", help="Target environment(s); required when more than one exists")
     parser.add_argument("--workflow-key", required=True, dest="workflow_key")
     parser.add_argument("--stream-expression", required=True, dest="stream_expression")
     parser.add_argument("--max-len", type=int, default=None, dest="max_len")
@@ -291,15 +285,17 @@ def main() -> None:
     args = parser.parse_args()
 
     ws = workspace_root(args.workspace)
+    from helpers.config import select_environments
+    envs = select_environments(ws, args.register_in)
 
-    if not (ws / "n8n-workflows-template" / "queue_publish.template.json").exists():
+    if not (workspace_path(ws, "templates", "queue_publish.template.json")).exists():
         print(
             "ERROR: primitive 'queue_publish' not found in workspace. Run create-queue first.",
             file=sys.stderr,
         )
         sys.exit(1)
 
-    template_path = ws / "n8n-workflows-template" / f"{args.workflow_key}.template.json"
+    template_path = workspace_path(ws, "templates", f"{args.workflow_key}.template.json")
     if not template_path.exists():
         print(f"ERROR: workflow template not found: {template_path}", file=sys.stderr)
         sys.exit(1)
@@ -315,7 +311,7 @@ def main() -> None:
     template_path.write_text(json.dumps(template, indent=2))
     print(f"  Inserted Queue Publish in {template_path}")
 
-    _auto_register_queue_scopes(ws, args.stream_expression)
+    _auto_register_queue_scopes(ws, args.stream_expression, envs)
     print("add-queue-publish-to-workflow complete.")
 
 

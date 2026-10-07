@@ -138,7 +138,7 @@ The honest framing: this is not three competitors. **`@n8n/workflow-sdk` is the 
 
 ## Methodology footer
 
-**`n8n-evol-I`** — read first-hand from disk at `/Users/mwamedacen/Desktop/projects/n8n-evol-I/`: `README.md`, `docs/independent-review-2026-04-30.md`, `helpers/package.json`, `helpers/tidy_workflow.py`, `helpers/tidy_shim.mjs`, plus directory listings of `helpers/`, `skills/`, `primitives/`, `meta-evals/`. The prior internal review's first-hand evidence (cited at file:line) backs claims that I did not re-verify in this pass.
+**`n8n-evol-I`** — read first-hand from the repository checkout: `README.md`, `docs/independent-review-2026-04-30.md`, `helpers/package.json`, `helpers/tidy_workflow.py`, `helpers/tidy_shim.mjs`, plus directory listings of `helpers/`, `skills/`, `primitives/`, `meta-evals/`. The prior internal review's first-hand evidence (cited at file:line) backs claims that I did not re-verify in this pass.
 
 **`@n8n/workflow-sdk`** — read source files at `n8n-io/n8n` monorepo path `packages/@n8n/workflow-sdk/`, sibling to `packages/workflow` and 40+ other `@n8n/*` packages. Files inspected: `package.json`, `README.md`, `src/index.ts`, `src/workflow-builder.ts`. **Cross-confirmed** by `grep` against n8n-evol-I's own source: `helpers/package.json:1` pins `"@n8n/workflow-sdk":"0.10.2"`; `helpers/tidy_shim.mjs:3-4` does `import sdk from '@n8n/workflow-sdk'; const { layoutWorkflowJSON } = sdk;`; `helpers/tidy_workflow.py:11` documents the SDK pin in the module docstring; `helpers/tidy_workflow.py:23` declares `_SDK_VERSION = "0.10.2"`; `helpers/tidy_workflow.py:34,41` install `@n8n/workflow-sdk@{_SDK_VERSION}` into `helpers/node_modules/@n8n/workflow-sdk`. n8n-evol-I is a literal consumer of the SDK.
 

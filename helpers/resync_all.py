@@ -1,40 +1,28 @@
 #!/usr/bin/env python3
-"""Resync every workflow registered in an env's YAML."""
+"""Stage all environment workflows before applying any resynchronized source."""
 import argparse
-import subprocess
 import sys
 from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from helpers.workspace import workspace_root
 from helpers.config import load_yaml
+from helpers.resync import resync_many
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--workspace", default=None)
-    parser.add_argument("--env", required=True)
-    args = parser.parse_args()
-
+def main():
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--workspace', '--project', dest='workspace')
+    p.add_argument('--env', required=True)
+    p.add_argument('--preview', action='store_true')
+    args = p.parse_args()
     ws = workspace_root(args.workspace)
-    yaml_data = load_yaml(args.env, ws)
-    workflows = yaml_data.get("workflows") or {}
-    helpers = Path(__file__).parent
-
-    failures: list[tuple[str, int]] = []
-    for key in sorted(workflows.keys()):
-        cmd = [sys.executable, str(helpers / "resync.py"),
-               "--workspace", str(ws), "--env", args.env, "--workflow-key", key]
-        r = subprocess.run(cmd)
-        if r.returncode != 0:
-            failures.append((key, r.returncode))
-
-    if failures:
-        print(f"resync_all complete with {len(failures)} failure(s): {failures}", file=sys.stderr)
-        sys.exit(1)
-    print("resync_all complete.")
+    from helpers.workspace import ensure_workspace
+    ensure_workspace(ws)
+    try:
+        resync_many(ws, args.env, sorted((load_yaml(args.env, ws).get('workflows') or {})), args.preview)
+    except (ValueError, RuntimeError) as exc:
+        raise SystemExit(f'Resync stopped: {exc}')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

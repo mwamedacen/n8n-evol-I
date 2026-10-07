@@ -12,12 +12,15 @@ SDK pin: @n8n/workflow-sdk@stable (0.10.2) — licensed under n8n Sustainable Us
 """
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import sys
 from collections import deque
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from helpers.workspace import workspace_path, require_project, assert_not_in_harness
 _HARNESS_ROOT = Path(__file__).resolve().parent.parent
 _SHIM = _HARNESS_ROOT / "helpers" / "tidy_shim.mjs"
 _SDK_VERSION = "0.10.2"
@@ -28,21 +31,33 @@ _H_GAP = 220
 _V_GAP = 120
 
 
+def _sdk_cache_root() -> Path:
+    override = os.environ.get("N8N_EVOL_CACHE_HOME")
+    root = Path(override).expanduser() if override else Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))) / "n8n-evol-I"
+    path = (root / "workflow-sdk" / _SDK_VERSION).resolve()
+    assert_not_in_harness(path)
+    return path
+
+
 def _ensure_sdk() -> bool:
-    """Install @n8n/workflow-sdk into helpers/node_modules if not already present. Returns True on success."""
-    helpers_dir = _HARNESS_ROOT / "helpers"
+    """Install the pinned SDK in a user cache, never inside installed tooling."""
+    helpers_dir = _sdk_cache_root()
     sdk_dir = helpers_dir / "node_modules" / "@n8n" / "workflow-sdk"
     if sdk_dir.exists():
         return True
     if not shutil.which("node") or not shutil.which("npm"):
         return False
-    result = subprocess.run(
-        ["npm", "install", "--prefix", str(helpers_dir),
-         f"@n8n/workflow-sdk@{_SDK_VERSION}",
-         "--silent", "--no-fund", "--no-audit"],
-        capture_output=True,
-        text=True,
-    )
+    try:
+        helpers_dir.mkdir(parents=True, exist_ok=True)
+        result = subprocess.run(
+            ["npm", "install", "--prefix", str(helpers_dir),
+             f"@n8n/workflow-sdk@{_SDK_VERSION}",
+             "--silent", "--no-fund", "--no-audit", "--ignore-scripts", "--no-package-lock"],
+            capture_output=True, text=True, timeout=60,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        print(f"[tidy_workflow] SDK cache unavailable: {error}", file=sys.stderr)
+        return False
     if result.returncode != 0:
         print(f"[tidy_workflow] npm install failed:\n{result.stderr}", file=sys.stderr)
         return False
@@ -57,7 +72,7 @@ def _layout_via_shim(workflow: dict) -> dict | None:
         return None
     try:
         result = subprocess.run(
-            ["node", str(_SHIM)],
+            ["node", str(_SHIM), str(_sdk_cache_root())],
             input=json.dumps(workflow),
             capture_output=True,
             text=True,
@@ -216,8 +231,8 @@ def tidy(workflow: dict) -> dict:
 
 
 def _load_workflow(workspace: Path, key: str) -> tuple[Path, dict]:
-    template_dir = workspace / "n8n-workflows-template"
-    path = template_dir / f"{key}.template.json"
+    template_dir = workspace_path(workspace, "templates")
+    path = workspace_path(workspace, "templates", f"{key}.template.json")
     if not path.exists():
         sys.exit(f"[tidy_workflow] template not found: {path}")
     with open(path) as f:
@@ -226,12 +241,12 @@ def _load_workflow(workspace: Path, key: str) -> tuple[Path, dict]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Tidy n8n workflow node positions.")
-    parser.add_argument("--workspace", required=True, help="Path to n8n-evol-I workspace directory")
+    parser.add_argument("--project", "--workspace", dest="workspace", help="Project directory; discovered upward by default")
     parser.add_argument("--workflow-key", required=True, help="Workflow key (filename stem without .template.json)")
     parser.add_argument("--in-place", action="store_true", help="Write result back to template file (default: print to stdout)")
     args = parser.parse_args()
 
-    workspace = Path(args.workspace).expanduser().resolve()
+    workspace = require_project(args.workspace)
     path, workflow = _load_workflow(workspace, args.workflow_key)
     result = tidy(workflow)
 

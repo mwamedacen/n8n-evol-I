@@ -2,14 +2,17 @@
 """Structural validation for a workflow template or generated JSON."""
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from helpers.workspace import workspace_root
+from helpers.workspace import workspace_root, workspace_path, build_path
 from helpers.placeholder import validator as placeholder_validator
+from helpers.placeholder.paths import source_file
+from helpers.test_functions import project_test_command
 
 
 _JS_PLACEHOLDER_RE = re.compile(r"\{\{(?:INTERPOLATE_|@)js:([^}]+)\}\}")
@@ -204,7 +207,10 @@ def _validate_code_node(
         return errors
 
     rel_path = m.group(1).strip()
-    fn_file = workspace / rel_path
+    try:
+        fn_file = source_file(workspace, rel_path)
+    except ValueError as error:
+        return [f"node '{name}': {error}"]
     if not fn_file.exists():
         errors.append(f"node '{name}': referenced file not found: {rel_path}")
         return errors
@@ -212,6 +218,12 @@ def _validate_code_node(
     fn_stem = fn_file.stem
 
     fn_text = fn_file.read_text(encoding="utf-8")
+
+    # Project test commands/conventions own their module and test-file rules.
+    # Structural workflow validation and source-file existence still apply.
+    # This does not transpile ESM/TypeScript for the n8n Code-node runtime.
+    if project_test_command(workspace, "n8n") is not None:
+        return errors
 
     if ext == "js":
         if _JS_TRAILER_REQUIRED not in fn_text:
@@ -234,10 +246,10 @@ def _validate_code_node(
                 "n8n-glue belongs in the Code-node body, not the file."
             )
 
-    test_file = workspace / "n8n-functions-tests" / test_filename(fn_stem)
+    test_file = workspace_path(workspace, "function_tests") / test_filename(fn_stem)
     if not test_file.exists():
         errors.append(
-            f"node '{name}': missing test file {test_file.relative_to(workspace)}. "
+            f"node '{name}': missing test file {os.path.relpath(test_file, workspace)}. "
             "Create it before deploying."
         )
 
@@ -319,9 +331,9 @@ def main() -> None:
         if not args.env:
             print("ERROR: --source built requires --env", file=sys.stderr)
             sys.exit(2)
-        path = ws / "n8n-build" / args.env / f"{args.workflow_key}.generated.json"
+        path = build_path(ws, args.env) / f"{args.workflow_key}.generated.json"
     else:
-        path = ws / "n8n-workflows-template" / f"{args.workflow_key}.template.json"
+        path = workspace_path(ws, "templates") / f"{args.workflow_key}.template.json"
 
     if not path.exists():
         print(f"ERROR: file not found: {path}", file=sys.stderr)

@@ -29,6 +29,8 @@ def main() -> None:
     args = parser.parse_args()
 
     ws = workspace_root(args.workspace)
+    from helpers.workspace import ensure_workspace
+    ensure_workspace(ws)
     load_env(args.env, ws)
     wf_id = _resolve_workflow_id(args.env, args.workflow_key, ws)
     client = ensure_client(args.env, ws)

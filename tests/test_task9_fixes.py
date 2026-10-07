@@ -121,6 +121,7 @@ def test_finding6_empty_response_returns_none() -> None:
 
     for verb in ("get", "post", "put", "delete"):
         mock_resp = Mock()
+        mock_resp.status_code = 204
         mock_resp.content = b""  # empty body
         mock_resp.raise_for_status = Mock()
         with patch(f"helpers.n8n_client.requests.{verb}", return_value=mock_resp):
@@ -274,6 +275,11 @@ def test_finding15_deployed_template_uses_canonical_form(tmp_path: Path) -> None
         capture_output=True, text=True, check=True,
     )
 
+    (workspace / "n8n-config" / "dev.yml").write_text(yaml.safe_dump({
+        "name": "dev", "displayName": "Development",
+        "n8n": {"instanceName": "https://dev.invalid"},
+    }))
+
     # Stub a minimal workflow template for the helper to wrap.
     (workspace / "n8n-workflows-template" / "demo.template.json").write_text(json.dumps({
         "name": "demo",
@@ -292,7 +298,7 @@ def test_finding15_deployed_template_uses_canonical_form(tmp_path: Path) -> None
     helper = Path(__file__).resolve().parents[1] / "helpers" / "add_lock_to_workflow.py"
     r = subprocess.run(
         [sys.executable, str(helper),
-         "--workspace", str(workspace), "--workflow-key", "demo",
+         "--workspace", str(workspace), "--workflow-key", "demo", "--env", "dev",
          "--scope-expression", "='lock-' + $json.scope"],
         capture_output=True, text=True,
     )

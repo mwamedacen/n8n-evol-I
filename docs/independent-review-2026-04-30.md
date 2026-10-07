@@ -2,7 +2,7 @@
 
 **Date**: 2026-04-30
 **Reviewer**: project_reviewer (autonomous agent on team `n8n-evol-audit`)
-**Scope**: project at `/Users/mwamedacen/Desktop/projects/n8n-evol-I/` at commit `cc71d47`
+**Scope**: repository checkout at commit `cc71d47`
 **Method**:
 - **Code audit (first-hand)**: `Read` / `Bash` / `pytest --collect-only` against the repo.
 - **Static web research (sub-agent + WebFetch)**: `general-purpose` sub-agent for breadth, then WebFetch on individual READMEs.

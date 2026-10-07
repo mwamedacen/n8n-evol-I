@@ -1,31 +1,34 @@
 ---
 name: add-cloud-function
-description: Scaffold a Python serverless function / cloud function / serverless API under <workspace>/cloud-functions/.
+description: Extend a project's chosen service or use the optional Python/FastAPI serverless preset.
 user-invocable: false
 ---
 
 # add-cloud-function
 
-> The terms **serverless function**, **cloud function**, and **serverless API** are used interchangeably here. Internally the harness calls them "cloud functions" because the directory is `cloud-functions/`; pick whichever name your team prefers.
+Path examples use bundled defaults. Resolve source and environment locations from [project configuration](../configuration.md); preserve user preferences and existing conventions.
 
-## When
-
-The user wants to add a Python function callable over HTTP from n8n nodes (HTTP Request node).
-
-## How
+Add a function callable from n8n over HTTP. Use the user's language, framework and host choices, then existing service conventions, then the bundled preset.
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/helpers/add_cloud_function.py --name <name> [--platform railway|supabase|generic]
+python3 ${CLAUDE_PLUGIN_ROOT}/helpers/add_cloud_function.py \
+  --workspace <project> --name <name> [--preset python-fastapi] [--platform <host>]
 ```
 
-## Side effects
+A project can supply its own generator:
 
-- Seeds `<workspace>/cloud-functions/{app.py,registry.py,requirements.txt}` if absent.
-- Adds platform config (`railway.toml`, `railpack.json` for railway).
-- Writes `<workspace>/cloud-functions/functions/<name>.py` from the `hello_world` seed.
-- Wires the new function into `registry.py` (adds an import and an `EXPOSED_FUNCTIONS` entry).
-- Writes a smoke test stub at `<workspace>/cloud-functions-tests/test_<name>.py`.
+```yaml
+# n8n-project.yml
+paths:
+  cloud_functions: services/automation
+commands:
+  scaffold: [node, tools/add-function.mjs, "{name}", "{output}"]
+```
 
-## Deployment
+The command is an argument list run from the project. Supported substitutions are `{name}`, `{project}`, `{output}` and `{platform}`. `--scaffold-command <argv...>` supplies a one-off command and must appear last. No bundled framework files are added when a custom generator runs.
 
-The user runs `railway up` (or equivalent) themselves — deploying cloud functions is out of scope for the harness.
+The `python-fastapi` preset remains available. It seeds missing `app.py`, `registry.py`, `requirements.txt`, a named Python function and a smoke test, then registers the function. Existing files are preserved; a recognized preset registry is extended. Unknown existing services require their own generator or an explicit preset choice.
+
+Bundled host options are `railway` (Railway config), `supabase` (user-supplied hosting config), and `generic` (no host config). Set defaults with `cloud_function: {preset: python-fastapi, platform: generic}`. Use a custom command for other languages or hosts.
+
+Service deployment follows the project's chosen hosting workflow. This helper scaffolds files; it does not deploy the service.

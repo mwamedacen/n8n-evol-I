@@ -6,6 +6,8 @@ user-invocable: false
 
 # add-lock-to-workflow
 
+Path examples use bundled defaults. Resolve source and environment locations from [project configuration](../configuration.md); preserve user preferences and existing conventions.
+
 ## When
 
 An existing workflow needs to wrap its critical section in distributed-lock acquire / release calls so concurrent runs don't clobber each other's shared resource.
@@ -13,7 +15,7 @@ An existing workflow needs to wrap its critical section in distributed-lock acqu
 ## How
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/helpers/add_lock_to_workflow.py \
+python3 ${CLAUDE_PLUGIN_ROOT}/helpers/add_lock_to_workflow.py --env <env> \
   --workflow-key <wf> \
   [--lock-on-error] \
   [--scope-expression "={{ 'excel-' + $json.fileId }}"] \

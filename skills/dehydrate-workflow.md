@@ -6,6 +6,8 @@ user-invocable: false
 
 # dehydrate-workflow
 
+Path examples use bundled defaults. Resolve source and environment locations from [project configuration](../configuration.md); preserve user preferences and existing conventions.
+
 ## When
 
 A user pastes a raw workflow JSON they exported from another instance, and wants it as a template.

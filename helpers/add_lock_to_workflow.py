@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from helpers.workspace import workspace_root
+from helpers.workspace import workspace_root, workspace_path
 
 
 _LOCK_ACQUIRE_NODE_NAME = "Lock Acquire"
@@ -228,7 +228,7 @@ def _extract_static_scope(scope_expr: str) -> str | None:
     return literal
 
 
-def _auto_register_lock_scopes(workspace: Path, scope_expr: str) -> None:
+def _auto_register_lock_scopes(workspace: Path, scope_expr: str, envs: list[str] | None = None) -> None:
     """Append the static literal scope to every <env>.yml.lockScopes (idempotent)."""
     import re as _re  # local alias to keep this fn dependency-tight
     static = _extract_static_scope(scope_expr)
@@ -240,30 +240,24 @@ def _auto_register_lock_scopes(workspace: Path, scope_expr: str) -> None:
             file=sys.stderr,
         )
         return
-    config_dir = workspace / "n8n-config"
-    if not config_dir.is_dir():
-        return
-    import yaml as _yaml
-    for yml in sorted(config_dir.glob("*.yml")):
-        if yml.stem in ("common", "deployment_order"):
-            continue
-        try:
-            data = _yaml.safe_load(yml.read_text()) or {}
-        except Exception:
-            continue
+    from helpers.config import select_environments, load_yaml, save_yaml
+    for env_name in (envs if envs is not None else select_environments(workspace)):
+        data = load_yaml(env_name, workspace, validate=False)
         scopes = data.setdefault("lockScopes", [])
         if not isinstance(scopes, list):
             scopes = []
             data["lockScopes"] = scopes
         if static not in scopes:
             scopes.append(static)
-            yml.write_text(_yaml.dump(data, default_flow_style=False, sort_keys=False))
-            print(f"  Registered lockScopes += {static!r} in {yml.name}")
+            save_yaml(env_name, workspace, data, validate=False)
+            print(f"  Registered lockScopes += {static!r} in {env_name}")
+
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--workspace", default=None)
+    parser.add_argument("--workspace", "--project", dest="workspace", default=None)
+    parser.add_argument("--env", "--register-in", dest="register_in", help="Target environment(s); required when more than one exists")
     parser.add_argument("--workflow-key", required=True, dest="workflow_key")
     parser.add_argument("--lock-on-error", action="store_true", dest="lock_on_error")
     parser.add_argument("--scope-expression", default="={{ $execution.id }}", dest="scope_expression")
@@ -290,14 +284,16 @@ def main() -> None:
     args = parser.parse_args()
 
     ws = workspace_root(args.workspace)
+    from helpers.config import select_environments
+    envs = select_environments(ws, args.register_in)
 
     # Sanity: lock primitives must already exist in the workspace
     for prim in ("lock_acquisition", "lock_release"):
-        if not (ws / "n8n-workflows-template" / f"{prim}.template.json").exists():
+        if not (workspace_path(ws, "templates", f"{prim}.template.json")).exists():
             print(f"ERROR: primitive '{prim}' not found in workspace. Run create-lock first.", file=sys.stderr)
             sys.exit(1)
 
-    template_path = ws / "n8n-workflows-template" / f"{args.workflow_key}.template.json"
+    template_path = workspace_path(ws, "templates", f"{args.workflow_key}.template.json")
     if not template_path.exists():
         print(f"ERROR: workflow template not found: {template_path}", file=sys.stderr)
         sys.exit(1)
@@ -318,7 +314,7 @@ def main() -> None:
     # execution's lock keys. Only static literals are appended — dynamic
     # expressions (anything containing $json or other runtime refs) are skipped
     # because there's no way to enumerate them from a static config.
-    _auto_register_lock_scopes(ws, args.scope_expression)
+    _auto_register_lock_scopes(ws, args.scope_expression, envs)
 
     if args.lock_on_error:
         import subprocess
@@ -326,6 +322,7 @@ def main() -> None:
             sys.executable,
             str(Path(__file__).parent / "register_error_handler.py"),
             "--workspace", str(ws),
+            "--register-in", ",".join(envs),
             "--workflow-key", args.workflow_key,
             "--handler-key", "error_handler_lock_cleanup",
         ]

@@ -51,3 +51,13 @@ docs/n8n-harness-readme-revision-plan.md
 docs/n8n-harness-agents-md-migration-plan.md
 docs/n8n-harness-placeholder-rename-plan.md
 docs/n8n-harness-tidy-and-plugin-plan.md
+
+# Private local review — retained on disk, never published.
+docs/review-2026-10-06/
+
+# Embedded worktrees. Do not stage gitlinks.
+.worktrees/
+
+# Untracked research notes, not product. Exact root filenames.
+/Building N8N Workflows with Claude Code is the best way_ _ r_n8n.pdf
+/My thoughts on N8N as a Cloud Engineer with 10+ years of experience. _ r_n8n.pdf

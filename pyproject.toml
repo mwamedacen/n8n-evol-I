@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "n8n-evol-I"
-version = "2.0.0"
-description = "Read-only skill package for n8n workflow automation. Install via git clone into skills/."
+version = "3.0.0"
+description = "Agent-friendly n8n workflow templates, skills, and reusable primitives."
 requires-python = ">=3.11"
 dependencies = [
     "pyyaml>=6.0",
@@ -28,8 +28,8 @@ where = ["."]
 include = ["helpers*"]
 
 [tool.pytest.ini_options]
+testpaths = ["tests"]
 pythonpath = ["."]
 markers = [
     "gated_real: tests that hit the real n8n instance; skip if N8N_API_KEY unset",
 ]
-

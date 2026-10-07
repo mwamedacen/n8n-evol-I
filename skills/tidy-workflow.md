@@ -6,6 +6,8 @@ user-invocable: false
 
 # tidy-workflow
 
+Path examples use bundled defaults. Resolve source and environment locations from [project configuration](../configuration.md); preserve user preferences and existing conventions.
+
 ## When
 
 After authoring or editing a workflow template — especially after `add-lock-to-workflow.md`, `add-rate-limit-to-workflow.md`, or any operation that shifts node positions. Also useful before committing templates to version control.
@@ -27,7 +29,7 @@ python3 helpers/tidy_workflow.py \
 
 ## Side effects
 
-On first run, auto-installs `@n8n/workflow-sdk@stable` into `helpers/node_modules/` (~15–30 MB transitive, one-time cost). If `node`/`npm` are unavailable or the install fails, the helper falls back to a pure-Python BFS layout — less faithful than dagre but idempotent and crash-free.
+On first run, installs the pinned `@n8n/workflow-sdk@0.10.2` into the user cache described in [project configuration](../configuration.md). The installed toolkit stays unchanged. If `node`/`npm` are unavailable or the install fails, the helper falls back to a pure-Python BFS layout — less faithful than dagre but idempotent and crash-free.
 
 Sticky notes (`type: n8n-nodes-base.stickyNote`) are never moved.
 
@@ -39,15 +41,15 @@ Running tidy twice on the same input produces byte-identical output when using t
 
 When n8n-evol-I is installed as a Claude Code plugin, a PostToolUse hook fires `tidy_workflow.py --in-place` automatically after every `*.template.json` Write/Edit/MultiEdit. Standalone-skill-mode users who want auto-tidy can configure a hook manually in `~/.claude/settings.json`.
 
-To disable the hook after plugin install: remove or rename `hooks/hooks.json` in the plugin directory, or disable the plugin in Claude Code settings.
+To disable the hook after plugin install: use the agent runtime's hook/plugin settings; do not edit the installed package.
 
 ## License
 
-`@n8n/workflow-sdk` is published under the **n8n Sustainable Use License (SUL)**, not MIT. n8n-evol-I does not redistribute the SDK — your machine fetches it from npm at first run. By running this skill you accept the SUL terms for your use of the SDK. n8n-evol-I itself remains MIT.
+`@n8n/workflow-sdk` is published under the **n8n Sustainable Use License (SUL)**, not MIT. n8n-evol-I does not redistribute the SDK — your machine fetches it from npm at first run. n8n-evol-I itself remains MIT.
 
 ## Install size
 
-First run pulls `@n8n/workflow-sdk@stable` and its transitive dependencies (~15–30 MB). Subsequent runs skip the install check once `helpers/node_modules/@n8n/workflow-sdk` exists.
+First use downloads the pinned SDK and its dependencies. Later runs reuse its versioned cache. Missing Node/npm or a failed download keeps the Python fallback available.
 
 ## See also
 
