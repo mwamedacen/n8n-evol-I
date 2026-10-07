@@ -1,16 +1,22 @@
+<img width="1376" height="768" alt="n8n_evol_I_hero" src="docs/assets/n8n_evol_I_hero.png" />
+
 # N8N EVOL I
 
 Make n8n workflows easier for coding agents to read and edit. Templates replace bulky embedded code, prompts, and schemas with file references, helping agents work within their context windows.
 
-![A coding agent follows shipped skills to edit compact templates, code, prompts, and schemas, and to reuse primitives. YAML configuration feeds build-time interpolation. An illustrative graph shows a main workflow calling sub-workflows that share a primitive; deployment is dependency-first, and activation follows selection or recorded policy. The result goes to local n8n or n8n Cloud. Review and resync bring edits back.](docs/assets/project-flow.svg)
-
 - **Review focused changes.** Edit reusable code, prompts, schemas, and assets in their own files. Agents can load just what a task needs.
-- **Keep environments separate.** Each environment has one workspace and its own n8n deployment, credentials, workflow IDs, builds, and sync history.
+- **Multi-environment support.** Reuse the same workflow templates across environments, with YAML settings for local n8n or n8n Cloud.
 - **Use your existing project.** Adoption preserves files and instructions. Choose your layout, language, framework, hosting, and test commands.
 
 Reusable skills and workflow primitives help with deployment, error handling, locks, queues, and rate limits. The design borrows [Twelve-Factor principles](docs/design.md#twelve-factor-influences): separate configuration and dependencies, distinguish build from execution, and keep environments comparable.
 
 Deploy to local n8n or n8n Cloud, then bring n8n edits back into your files. [See actual verification results and remaining limits](docs/testing.md).
+
+## How it works
+
+Agents edit templates, code, prompts, and schemas, and reuse primitives. YAML configuration feeds build-time interpolation. Deployment is dependency-first, activation follows selection or recorded policy, and review and resync bring edits back.
+
+![A coding agent follows shipped skills to edit compact templates, code, prompts, and schemas, and to reuse primitives. YAML configuration feeds build-time interpolation. An illustrative graph shows a main workflow calling sub-workflows that share a primitive; deployment is dependency-first, and activation follows selection or recorded policy. The result goes to local n8n or n8n Cloud. Review and resync bring edits back.](docs/assets/project-flow.svg)
 
 ## Install
 
@@ -101,6 +107,10 @@ Work from the project folder or any subdirectory. For example:
 - “Create a webhook workflow in dev that validates incoming orders.”
 - “Preview the changes, deploy to dev, and run it with a sample order.”
 - “I edited the workflow in n8n. Review and resync those changes into the project.”
+- “Monitor workflow errors and notify me when something needs attention.”
+- “A run failed. Inspect that execution and tell me what needs fixing.”
+
+These are example prompts. The agent can inspect failed executions and report back in the session. This is not a built-in unattended alert or notification channel.
 
 Deployment builds current source. Resync checks local and remote changes against a saved baseline; conflicting edits stop for review. [Deployment and resync](docs/sync.md)
 

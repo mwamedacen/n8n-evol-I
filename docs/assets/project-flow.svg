@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="800" height="1060" viewBox="0 0 800 1060" role="img" aria-labelledby="title desc">
-<title id="title">Small source files become composed n8n workflows</title>
+<title id="title">n8n evol I — Small source files become composed n8n workflows</title>
 <desc id="desc">A coding agent follows shipped skills to load and edit relevant workflow templates, code, prompts and schemas, and reuse error-handling, rate-limit, lock and queue primitives. Shared YAML and selected environment configuration feed build-time interpolation of files and environment-specific IDs. An illustrative dependency graph shows a main workflow calling two sub-workflows that share a primitive. Call arrows run from callers to callees; numbered badges indicate dependency-first deployment: primitive, sub-workflows, main workflow. Activation follows explicit selection or recorded policy. The target is local n8n or n8n Cloud. Review and resync return accepted remote edits to source.</desc>
 <defs>
   <marker id="flow-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M1 1 L9 5 L1 9Z" fill="#2864C5"/></marker>
@@ -23,7 +23,7 @@
   </style>
 </defs>
 <rect width="800" height="1060" rx="16" fill="#FFFFFF"/>
-<text x="32" y="49" class="heading">Small files. Composable workflows.</text>
+<text x="32" y="49" class="heading">n8n evol I</text>
 <text x="32" y="80" class="body">From agent-friendly source to executable n8n workflows.</text>
 
 <!-- One guided authoring relationship, not two unrelated cards. -->
